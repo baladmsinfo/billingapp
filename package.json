@@ -1,0 +1,42 @@
+{
+  "name": "pos",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@faker-js/faker": "^10.1.0",
+    "@nuxt/fonts": "^0.12.1",
+    "@nuxt/image": "^2.0.0",
+    "@nuxtjs/device": "^4.0.0",
+    "@nuxtjs/toast": "^3.3.1",
+    "@pinia/nuxt": "^0.11.3",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.45.1",
+    "nuxt": "^4.2.1",
+    "nuxt-device": "^2.1.0",
+    "nuxt-toast": "^1.4.0",
+    "pinia": "^3.0.4",
+    "sql.js": "^1.13.0",
+    "typescript": "^5.9.3",
+    "uuid": "^13.0.0",
+    "vue": "^3.5.25",
+    "vue-router": "^4.6.3",
+    "vuetify": "^3.11.3",
+    "vuetify-nuxt-module": "^0.18.8"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.4",
+    "sass-embedded": "^1.77.5",
+    "vite-plugin-vuetify": "^2.1.2"
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">buckspos</string>
+    <string name="title_activity_main">buckspos</string>
+    <string name="package_name">com.buckscloudpos.in</string>
+    <string name="custom_url_scheme">com.buckscloudpos.in</string>
+</resources>
