@@ -19,27 +19,19 @@ export async function seed(reset: boolean = true) {
 
   await migrate(reset);
   const { db, persistDb } = await useDb();
-
   const now = Math.floor(Date.now() / 1000);
 
   // =====================================
-  // SECURITY
+  // SECURITY / COMPANY
   // =====================================
   const pinHash = await createPinHash("1234");
-
-  // Use fixed COMPANY_ID to avoid CHECK constraint errors
-  const COMPANY_ID = "LOCAL_COMPANY"; 
+  const COMPANY_ID = "LOCAL_COMPANY";
   const DEVICE_ID = `DEVICE-TEST`;
   const LICENSE_KEY = "BBX-OFFLINE-001";
   const LICENSE_TOKEN = "SIGNED_LICENSE_TOKEN_SAMPLE";
   const LICENSE_EXPIRY = now + 365 * 24 * 60 * 60;
 
-  // =====================================
-  // 1) COMPANY (SINGLE)
-  // =====================================
-  // Delete existing company if any
   db.exec(`DELETE FROM companies WHERE id='${COMPANY_ID}';`);
-
   db.exec(`
     INSERT INTO companies (
       id, name, email, phone, address,
@@ -63,19 +55,21 @@ export async function seed(reset: boolean = true) {
   `);
 
   // =====================================
-  // 2) CUSTOMERS + ADDRESSES
+  // PARTIES (CUSTOMERS + VENDORS)
   // =====================================
   const customers: string[] = [];
+  const vendors: string[] = [];
 
   for (let i = 1; i <= 20; i++) {
-    const cid = uuidv4();
-    customers.push(cid);
+    const pid = uuidv4();
+    customers.push(pid);
 
     db.exec(`
-      INSERT INTO customers (
-        id, name, email, phone, company_id, created_at, updated_at
+      INSERT INTO parties (
+        id, type, name, email, phone, company_id, created_at, updated_at
       ) VALUES (
-        '${cid}',
+        '${pid}',
+        'CUSTOMER',
         'Customer ${i}',
         'customer${i}@mail.com',
         '90000000${i}',
@@ -86,12 +80,11 @@ export async function seed(reset: boolean = true) {
     `);
 
     db.exec(`
-      INSERT INTO customer_addresses (
-        id, customer_id, address_line1, city, state, country, pincode,
-        is_default, created_at, updated_at
+      INSERT INTO party_addresses (
+        id, party_id, address_line1, city, state, country, pincode, is_default, created_at, updated_at
       ) VALUES (
         '${uuidv4()}',
-        '${cid}',
+        '${pid}',
         'Street ${i}',
         'Chennai',
         'Tamil Nadu',
@@ -104,12 +97,48 @@ export async function seed(reset: boolean = true) {
     `);
   }
 
+  for (let i = 1; i <= 10; i++) {
+    const pid = uuidv4();
+    vendors.push(pid);
+
+    db.exec(`
+      INSERT INTO parties (
+        id, type, name, email, phone, company_id, created_at, updated_at
+      ) VALUES (
+        '${pid}',
+        'VENDOR',
+        'Vendor ${i}',
+        'vendor${i}@mail.com',
+        '80000000${i}',
+        '${COMPANY_ID}',
+        ${now},
+        ${now}
+      );
+    `);
+
+    db.exec(`
+      INSERT INTO party_addresses (
+        id, party_id, address_line1, city, state, country, pincode, is_default, created_at, updated_at
+      ) VALUES (
+        '${uuidv4()}',
+        '${pid}',
+        'Vendor Street ${i}',
+        'Chennai',
+        'Tamil Nadu',
+        'India',
+        '6001${i}',
+        1,
+        ${now},
+        ${now}
+      );
+    `);
+  }
+
   // =====================================
-  // 3) CATEGORIES + SUBCATEGORIES
+  // CATEGORIES + SUBCATEGORIES
   // =====================================
   const parentCategories: string[] = [];
   const subCategories: { id: string; parent: string }[] = [];
-
   const parentNames = [
     "Groceries",
     "Beverages",
@@ -125,8 +154,7 @@ export async function seed(reset: boolean = true) {
 
     db.exec(`
       INSERT INTO categories (
-        id, name, description, company_id, parent_id,
-        created_at, updated_at
+        id, name, description, company_id, parent_id, created_at, updated_at
       ) VALUES (
         '${parentId}',
         '${name}',
@@ -145,8 +173,7 @@ export async function seed(reset: boolean = true) {
 
       db.exec(`
         INSERT INTO categories (
-          id, name, description, company_id, parent_id,
-          created_at, updated_at
+          id, name, description, company_id, parent_id, created_at, updated_at
         ) VALUES (
           '${subId}',
           '${name} - Sub ${i}',
@@ -161,9 +188,10 @@ export async function seed(reset: boolean = true) {
   }
 
   // =====================================
-  // 4) PRODUCTS
+  // PRODUCTS + ITEMS
   // =====================================
   const products: string[] = [];
+  const items: { id: string; pid: string; price: number }[] = [];
 
   for (let i = 1; i <= 60; i++) {
     const id = uuidv4();
@@ -196,54 +224,46 @@ export async function seed(reset: boolean = true) {
         ${now}
       );
     `);
+
+    for (let v = 1; v <= rand(1, 3); v++) {
+      const itemId = uuidv4();
+      const itemPrice = price + rand(0, 50);
+      items.push({ id: itemId, pid: id, price: itemPrice });
+
+      db.exec(`
+        INSERT INTO items (
+          id, product_id, sku, variant,
+          price, mrp, quantity,
+          company_id, created_at, updated_at
+        ) VALUES (
+          '${itemId}',
+          '${id}',
+          'ITEM-${i}-${v}',
+          'Variant ${v}',
+          ${itemPrice},
+          ${itemPrice + 50},
+          ${rand(5, 100)},
+          '${COMPANY_ID}',
+          ${now},
+          ${now}
+        );
+      `);
+    }
   }
 
   // =====================================
-  // 5) ITEMS
-  // =====================================
-  const items: { id: string; pid: string; price: number }[] = [];
-
-  for (let i = 1; i <= 100; i++) {
-    const id = uuidv4();
-    const pid = products[rand(0, products.length - 1)];
-    const price = rand(50, 600);
-
-    items.push({ id, pid, price });
-
-    db.exec(`
-      INSERT INTO items (
-        id, product_id, sku, variant,
-        price, mrp, quantity,
-        company_id, created_at, updated_at
-      ) VALUES (
-        '${id}',
-        '${pid}',
-        'ITEM-${i}',
-        'Variant ${i}',
-        ${price},
-        ${price + 50},
-        ${rand(1, 100)},
-        '${COMPANY_ID}',
-        ${now},
-        ${now}
-      );
-    `);
-  }
-
-  // =====================================
-  // 6) CARTS
+  // CARTS + CART ITEMS
   // =====================================
   const carts: string[] = [];
-
   for (const cust of customers) {
-    const id = uuidv4();
-    carts.push(id);
+    const cartId = uuidv4();
+    carts.push(cartId);
 
     db.exec(`
       INSERT INTO carts (
-        id, customer_id, company_id, status, created_at, updated_at
+        id, party_id, company_id, status, created_at, updated_at
       ) VALUES (
-        '${id}',
+        '${cartId}',
         '${cust}',
         '${COMPANY_ID}',
         'ACTIVE',
@@ -251,50 +271,48 @@ export async function seed(reset: boolean = true) {
         ${now}
       );
     `);
+
+    const cartItemCount = rand(2, 5);
+    for (let ci = 0; ci < cartItemCount; ci++) {
+      const item = items[rand(0, items.length - 1)];
+      const qty = rand(1, 5);
+
+      db.exec(`
+        INSERT INTO cart_items (
+          id, cart_id, item_id, product_id, quantity, price, total, created_at, updated_at
+        ) VALUES (
+          '${uuidv4()}',
+          '${cartId}',
+          '${item.id}',
+          '${item.pid}',
+          ${qty},
+          ${item.price},
+          ${qty * item.price},
+          ${now},
+          ${now}
+        );
+      `);
+    }
   }
 
   // =====================================
-  // 7) CART ITEMS
+  // INVOICES + ITEMS + PAYMENTS (party optional)
   // =====================================
-  for (let i = 0; i < rand(150, 300); i++) {
-    const cart = carts[rand(0, carts.length - 1)];
-    const item = items[rand(0, items.length - 1)];
-    const qty = rand(1, 5);
+  for (let i = 1; i <= 100; i++) {
+    const invoiceId = uuidv4();
 
-    db.exec(`
-      INSERT INTO cart_items (
-        id, cart_id, item_id, product_id,
-        quantity, price, total, created_at, updated_at
-      ) VALUES (
-        '${uuidv4()}',
-        '${cart}',
-        '${item.id}',
-        '${item.pid}',
-        ${qty},
-        ${item.price},
-        ${qty * item.price},
-        ${now},
-        ${now}
-      );
-    `);
-  }
-
-  // =====================================
-  // 8) INVOICES + ITEMS + PAYMENTS
-  // =====================================
-  for (let i = 1; i <= 200; i++) {
-    const invId = uuidv4();
-    let total = 0;
+    // randomly decide if invoice has a party
+    const hasParty = Math.random() > 0.2; // 80% invoices linked
+    const buyer = hasParty ? customers[rand(0, customers.length - 1)] : null;
 
     db.exec(`
       INSERT INTO invoices (
-        id, invoice_number, company_id, customer_id,
-        date, status, type, created_at, updated_at
+        id, invoice_number, company_id, party_id, date, status, type, created_at, updated_at
       ) VALUES (
-        '${invId}',
+        '${invoiceId}',
         'INV-${i}',
         '${COMPANY_ID}',
-        '${customers[rand(0, customers.length - 1)]}',
+        ${buyer ? `'${buyer}'` : "NULL"},
         ${now},
         'PAID',
         'POS',
@@ -303,18 +321,19 @@ export async function seed(reset: boolean = true) {
       );
     `);
 
-    for (let j = 0; j < rand(1, 5); j++) {
+    let total = 0;
+    const lineCount = rand(1, 5);
+    for (let j = 0; j < lineCount; j++) {
       const item = items[rand(0, items.length - 1)];
       const qty = rand(1, 5);
       total += qty * item.price;
 
       db.exec(`
         INSERT INTO invoice_items (
-          id, invoice_id, item_id, product_id,
-          quantity, price, total, created_at, updated_at
+          id, invoice_id, item_id, product_id, quantity, price, total, created_at, updated_at
         ) VALUES (
           '${uuidv4()}',
-          '${invId}',
+          '${invoiceId}',
           '${item.id}',
           '${item.pid}',
           ${qty},
@@ -329,24 +348,28 @@ export async function seed(reset: boolean = true) {
     db.exec(`
       UPDATE invoices
       SET total_amount=${total}, tax_amount=${total * 0.18}
-      WHERE id='${invId}';
+      WHERE id='${invoiceId}';
     `);
 
-    db.exec(`
-      INSERT INTO payments (
-        id, company_id, invoice_id,
-        amount, method, date, created_at, updated_at
-      ) VALUES (
-        '${uuidv4()}',
-        '${COMPANY_ID}',
-        '${invId}',
-        ${total},
-        'CASH',
-        ${now},
-        ${now},
-        ${now}
-      );
-    `);
+    if (buyer) {
+      db.exec(`
+        INSERT INTO payments (
+          id, company_id, invoice_id, party_id,
+          amount, method, date, created_at, updated_at, type
+        ) VALUES (
+          '${uuidv4()}',
+          '${COMPANY_ID}',
+          '${invoiceId}',
+          '${buyer}',
+          ${total},
+          'CASH',
+          ${now},
+          ${now},
+          ${now},
+          'FULL'
+        );
+      `);
+    }
   }
 
   await persistDb();

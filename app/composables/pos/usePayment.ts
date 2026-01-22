@@ -1,33 +1,59 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { payments, invoices, invoice_items } from "@/db/schema";
-import { dbReady } from "@/db/client";
-import { enqueueSync } from "@/sync/queue";
+import { useDb } from "@/db/client.js";
+import { enqueueSync } from "@/composables/pos/useSyncQueue";
 
-const now = () => new Date().toISOString();
+const now = () => Date.now(); // ✅ INTEGER timestamp
 
 export function usePayment() {
+
+  /* ================= DB ================= */
+
+  const dbReady = async () => {
+    const { drizzleDb, persistDb } = await useDb();
+    return { drizzleDb, persistDb };
+  };
 
   /* ================= CREATE PAYMENT ================= */
 
   const createPayment = async (data: {
     company_id: string;
-    invoice_id?: string;      // null = ADVANCE
+    invoice_id?: string;        // undefined = ADVANCE
     customer_id?: string;
     amount: number;
-    method: "CASH" | "CARD" | "UPI" | "BANK";
+    method:
+      | "CASH"
+      | "CARD"
+      | "UPI"
+      | "BANK_TRANSFER"
+      | "CHEQUE"
+      | "OTHER";
     reference?: string;
     type: "ADVANCE" | "PARTIAL" | "FULL";
   }) => {
+
+    // ✅ Guard: advance must not have invoice
+    if (data.type === "ADVANCE" && data.invoice_id) {
+      throw new Error("Advance payment cannot be linked to invoice");
+    }
+
     const { drizzleDb, persistDb } = await dbReady();
     const id = uuidv4();
+    const ts = now();
 
     await drizzleDb.insert(payments).values({
       id,
-      ...data,
-      date: now(),
-      created_at: now(),
-      updated_at: now(),
+      company_id: data.company_id,
+      invoice_id: data.invoice_id ?? null,
+      customer_id: data.customer_id ?? null,
+      amount: data.amount,
+      method: data.method,
+      reference_no: data.reference ?? null,
+      type: data.type,
+      date: ts,
+      created_at: ts,
+      updated_at: ts,
     });
 
     if (data.invoice_id) {
@@ -123,7 +149,7 @@ export function usePayment() {
       .where(eq(invoices.id, invoice_id));
   };
 
-  /* ================= ADVANCE PAYMENTS ================= */
+  /* ================= ADVANCE BALANCE ================= */
 
   const getCustomerAdvanceBalance = async (customer_id: string) => {
     const { drizzleDb } = await dbReady();
@@ -131,9 +157,7 @@ export function usePayment() {
     const rows = await drizzleDb
       .select()
       .from(payments)
-      .where(
-        eq(payments.customer_id, customer_id)
-      );
+      .where(eq(payments.customer_id, customer_id));
 
     return rows
       .filter(p => p.type === "ADVANCE")
@@ -148,7 +172,8 @@ export function usePayment() {
     return drizzleDb
       .select()
       .from(payments)
-      .where(eq(payments.invoice_id, invoice_id));
+      .where(eq(payments.invoice_id, invoice_id))
+      .orderBy(desc(payments.date));
   };
 
   const getCompanyPayments = async (company_id: string) => {
@@ -157,7 +182,18 @@ export function usePayment() {
     return drizzleDb
       .select()
       .from(payments)
-      .where(eq(payments.company_id, company_id));
+      .where(eq(payments.company_id, company_id))
+      .orderBy(desc(payments.date));
+  };
+
+  const getCustomerPayments = async (customer_id: string) => {
+    const { drizzleDb } = await dbReady();
+
+    return drizzleDb
+      .select()
+      .from(payments)
+      .where(eq(payments.customer_id, customer_id))
+      .orderBy(desc(payments.date));
   };
 
   return {
@@ -165,31 +201,7 @@ export function usePayment() {
     applyPaymentToInvoice,
     getInvoicePayments,
     getCompanyPayments,
+    getCustomerPayments,
     getCustomerAdvanceBalance,
   };
 }
-
-
-// createPayment({
-//   company_id,
-//   invoice_id,
-//   amount: invoice.total_amount,
-//   method: "UPI",
-//   type: "FULL"
-// });
-
-// createPayment({
-//   company_id,
-//   invoice_id,
-//   amount: 500,
-//   method: "CASH",
-//   type: "PARTIAL"
-// });
-
-// createPayment({
-//   company_id,
-//   customer_id,
-//   amount: 1000,
-//   method: "CASH",
-//   type: "ADVANCE"
-// });

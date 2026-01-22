@@ -25,7 +25,7 @@ export async function migrate(reset: boolean = false): Promise<void> {
     db.exec("PRAGMA foreign_keys = ON;");
 
     // =================================================
-    // 🏢 COMPANIES (SINGLE COMPANY – OFFLINE POS)
+    // 🏢 COMPANIES
     // =================================================
     db.exec(`
       CREATE TABLE IF NOT EXISTS companies (
@@ -49,17 +49,20 @@ export async function migrate(reset: boolean = false): Promise<void> {
     `);
 
     // =================================================
-    // 👥 CUSTOMERS
+    // 👥 PARTIES
     // =================================================
     db.exec(`
-      CREATE TABLE IF NOT EXISTS customers (
+      CREATE TABLE IF NOT EXISTS parties (
         id TEXT PRIMARY KEY,
+        company_id TEXT NOT NULL,
+        parent_party_id TEXT,
+        type TEXT NOT NULL CHECK(type IN ('CUSTOMER','VENDOR','BOTH')),
         name TEXT NOT NULL,
         email TEXT,
         phone TEXT,
         gstin TEXT,
-        password TEXT,
-        company_id TEXT NOT NULL,
+        opening_balance REAL DEFAULT 0,
+        credit_limit REAL DEFAULT 0,
         created_at INTEGER,
         updated_at INTEGER,
         FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
@@ -67,12 +70,12 @@ export async function migrate(reset: boolean = false): Promise<void> {
     `);
 
     // =================================================
-    // 📍 CUSTOMER ADDRESSES
+    // 📍 PARTY ADDRESSES
     // =================================================
     db.exec(`
-      CREATE TABLE IF NOT EXISTS customer_addresses (
+      CREATE TABLE IF NOT EXISTS party_addresses (
         id TEXT PRIMARY KEY,
-        customer_id TEXT NOT NULL,
+        party_id TEXT NOT NULL,
         address_line1 TEXT,
         address_line2 TEXT,
         address_line3 TEXT,
@@ -80,10 +83,11 @@ export async function migrate(reset: boolean = false): Promise<void> {
         state TEXT,
         country TEXT,
         pincode TEXT,
+        address_type TEXT DEFAULT 'BILLING' CHECK(address_type IN ('BILLING','SHIPPING')),
         is_default INTEGER DEFAULT 0,
         created_at INTEGER,
         updated_at INTEGER,
-        FOREIGN KEY(customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
       );
     `);
 
@@ -127,7 +131,7 @@ export async function migrate(reset: boolean = false): Promise<void> {
     `);
 
     // =================================================
-    // 📦 ITEMS (VARIANTS / STOCK)
+    // 📦 ITEMS
     // =================================================
     db.exec(`
       CREATE TABLE IF NOT EXISTS items (
@@ -135,34 +139,17 @@ export async function migrate(reset: boolean = false): Promise<void> {
         product_id TEXT NOT NULL,
         sku TEXT,
         variant TEXT,
-        price REAL,
+        price REAL DEFAULT 0,
         mrp REAL,
         quantity INTEGER DEFAULT 0,
-        location TEXT,
+        vendor_id TEXT,
         tax_rate_id TEXT,
         company_id TEXT NOT NULL,
         created_at INTEGER,
         updated_at INTEGER,
         FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE,
-        FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
-      );
-    `);
-
-    // =================================================
-    // 🧑‍💼 VENDORS
-    // =================================================
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS vendors (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        email TEXT,
-        phone TEXT,
-        address TEXT,
-        gstin TEXT,
-        company_id TEXT NOT NULL,
-        created_at INTEGER,
-        updated_at INTEGER,
-        FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
+        FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE,
+        FOREIGN KEY(vendor_id) REFERENCES parties(id) ON DELETE SET NULL
       );
     `);
 
@@ -172,13 +159,14 @@ export async function migrate(reset: boolean = false): Promise<void> {
     db.exec(`
       CREATE TABLE IF NOT EXISTS carts (
         id TEXT PRIMARY KEY,
-        customer_id TEXT,
+        party_id TEXT,
+        party_address_id TEXT,
         company_id TEXT NOT NULL,
-        status TEXT DEFAULT 'PENDING'
-          CHECK(status IN ('DRAFT','HOLD','PENDING','ACTIVE','CHECKEDOUT','CANCELLED')),
+        status TEXT DEFAULT 'PENDING' CHECK(status IN ('DRAFT','HOLD','PENDING','ACTIVE','CHECKEDOUT','CANCELLED')),
         created_at INTEGER,
         updated_at INTEGER,
-        FOREIGN KEY(customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+        FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE SET NULL,
+        FOREIGN KEY(party_address_id) REFERENCES party_addresses(id) ON DELETE SET NULL,
         FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
       );
     `);
@@ -212,21 +200,21 @@ export async function migrate(reset: boolean = false): Promise<void> {
         id TEXT PRIMARY KEY,
         invoice_number TEXT,
         company_id TEXT NOT NULL,
-        customer_id TEXT,
-        vendor_id TEXT,
+        party_id TEXT,
+        billing_address_id TEXT,
+        shipping_address_id TEXT,
         date INTEGER,
         due_date INTEGER,
-        status TEXT DEFAULT 'PENDING'
-          CHECK(status IN ('PENDING','PARTIAL','PAYLATER','PAID','CANCELLED')),
-        type TEXT DEFAULT 'SALE'
-          CHECK(type IN ('SALE','POS','EXPENSE','ONLINE','PURCHASE','RETURN','OTHER')),
+        status TEXT DEFAULT 'PENDING' CHECK(status IN ('PENDING','PARTIAL','PAYLATER','PAID','CANCELLED')),
+        type TEXT DEFAULT 'SALE' CHECK(type IN ('SALE','POS','PURCHASE','RETURN','EXPENSE','OTHER')),
         total_amount REAL DEFAULT 0,
         tax_amount REAL DEFAULT 0,
         created_at INTEGER,
         updated_at INTEGER,
         FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE,
-        FOREIGN KEY(customer_id) REFERENCES customers(id) ON DELETE SET NULL,
-        FOREIGN KEY(vendor_id) REFERENCES vendors(id) ON DELETE SET NULL
+        FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE SET NULL,
+        FOREIGN KEY(billing_address_id) REFERENCES party_addresses(id) ON DELETE SET NULL,
+        FOREIGN KEY(shipping_address_id) REFERENCES party_addresses(id) ON DELETE SET NULL
       );
     `);
 
@@ -241,8 +229,7 @@ export async function migrate(reset: boolean = false): Promise<void> {
         product_id TEXT NOT NULL,
         quantity INTEGER DEFAULT 1,
         price REAL DEFAULT 0,
-        status TEXT DEFAULT 'ORDERED'
-          CHECK(status IN ('ORDERED','PROCESSING','SHIPPED','DELIVERED','CANCELLED','RETURNED')),
+        status TEXT DEFAULT 'ORDERED' CHECK(status IN ('ORDERED','PROCESSING','SHIPPED','DELIVERED','CANCELLED','RETURNED')),
         tax_rate_id TEXT,
         total REAL DEFAULT 0,
         paid_amount REAL DEFAULT 0,
@@ -262,18 +249,21 @@ export async function migrate(reset: boolean = false): Promise<void> {
         id TEXT PRIMARY KEY,
         company_id TEXT NOT NULL,
         invoice_id TEXT,
-        amount REAL DEFAULT 0,
-        method TEXT DEFAULT 'CASH'
-          CHECK(method IN ('CASH','BANK_TRANSFER','UPI','CHEQUE','CARD','OTHER')),
+        party_id TEXT,
+        amount REAL NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('ADVANCE','PARTIAL','FULL','REFUND','PAYLATER')),
+        method TEXT DEFAULT 'CASH' CHECK(method IN ('CASH','BANK_TRANSFER','UPI','CHEQUE','CARD','OTHER')),
+        reference_no TEXT,
         gateway_payment_id TEXT,
         raw_response TEXT,
-        reference_no TEXT,
-        date INTEGER,
         note TEXT,
-        created_at INTEGER,
-        updated_at INTEGER,
+        status TEXT DEFAULT 'SUCCESS' CHECK(status IN ('SUCCESS','REFUNDED','FAILED','PENDING')),
+        date INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
         FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE,
-        FOREIGN KEY(invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
+        FOREIGN KEY(invoice_id) REFERENCES invoices(id) ON DELETE SET NULL,
+        FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE SET NULL
       );
     `);
 
@@ -299,18 +289,17 @@ export async function migrate(reset: boolean = false): Promise<void> {
     // =================================================
     const triggerTables = [
       "companies",
-      "customers",
-      "customer_addresses",
+      "parties",
+      "party_addresses",
       "categories",
       "products",
       "items",
-      "vendors",
       "carts",
       "cart_items",
       "invoices",
       "invoice_items",
       "payments",
-      "sync_queue", // added sync_queue here
+      "sync_queue",
     ];
 
     triggerTables.forEach((table) => {
@@ -328,11 +317,7 @@ export async function migrate(reset: boolean = false): Promise<void> {
     db.exec("COMMIT;");
     await persistDb();
 
-    console.log(
-      reset
-        ? "🎉 Database reset & migration completed!"
-        : "🎉 Migration completed successfully!"
-    );
+    console.log("🎉 Migration completed successfully!");
   } catch (err: any) {
     db.exec("ROLLBACK;");
     console.error("❌ Migration failed:", err?.message ?? err);
