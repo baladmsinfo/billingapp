@@ -1,7 +1,7 @@
 <script setup>
 definePageMeta({
   layout: "auth",
-  auth: false // optional flag
+  auth: false 
 });
 </script>
 
