@@ -1,223 +1,199 @@
 <template>
-    <v-container fluid class="pa-4 pa-md-6">
-        <v-row dense>
-            <!-- 🏷️ Header -->
-            <v-col cols="12">
-                <div class="mb-4">
-                    <h2 class="text-h6 font-weight-bold">Offline Dashboard</h2>
-                    <p class="text-caption text-medium-emphasis">
-                        Data from local device (offline mode)
-                    </p>
-                </div>
-            </v-col>
+  <v-container fluid class="pa-3">
+    <!-- HEADER 
+    <v-row align="center" justify="space-between" class="mb-6">
+      <v-col cols="8" class="pa-0">
+        <div class="text-h5 font-weight-semibold">POS Dashboard</div>
+        <div class="text-caption text-medium-emphasis mt-1">
+          Today • Real-time overview
+        </div>
+      </v-col>
 
-            <!-- 💰 Cashflow -->
-            <v-col cols="12">
-                <v-card elevation="2" class="pa-4">
-                    <div class="d-flex justify-space-between align-center mb-3">
-                        <h3 class="text-subtitle-1 font-weight-bold">Cashflow</h3>
-                        <v-select v-model="periods.cashflow" :items="periodOptions" density="compact" hide-details
-                            variant="outlined" style="max-width: 140px" @update:modelValue="loadCashflow" />
-                    </div>
+      <v-col cols="auto" class="pa-0">
+        <v-avatar size="46" class="header-avatar elevation-3">
+          <v-icon size="22">mdi-store</v-icon>
+        </v-avatar>
+      </v-col>
+    </v-row>-->
 
-                    <client-only>
-                        <apexchart type="line" height="280" :options="cashflowOptions" :series="cashflowSeries" />
-                    </client-only>
-                </v-card>
-            </v-col>
+    <!-- STATS (Swipeable) -->
+    <v-slide-group show-arrows="false" class="mb-2 pa-1" center-active>
+      <v-slide-group-item v-for="card in stats" :key="card.title">
+        <v-card rounded="2xl" elevation="3" class="stat-card mr-2 mb-2" width="180">
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <div class="text-caption text-medium-emphasis">
+                {{ card.title }}
+              </div>
+              <div class="text-caption font-weight-bold mt-1">
+                {{ card.value }}
+              </div>
+            </div>
 
-            <!-- 🧾 Sales -->
-            <v-col cols="12" md="6">
-                <v-card elevation="2" class="pa-4">
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <h3 class="text-subtitle-1 font-weight-bold">Sales</h3>
-                        <v-select v-model="periods.sales" :items="periodOptions" density="compact" hide-details
-                            variant="outlined" style="max-width: 120px" @update:modelValue="loadSales" />
-                    </div>
+            <v-avatar size="40" :class="['stat-icon', card.bg]">
+              <v-icon size="18">{{ card.icon }}</v-icon>
+            </v-avatar>
+          </div>
+        </v-card>
+      </v-slide-group-item>
+    </v-slide-group>
 
-                    <div class="text-h6 font-weight-bold">
-                        {{ formatAmount(sales.paid) }}
-                    </div>
-                    <div class="text-caption">
-                        Unpaid: {{ formatAmount(sales.unpaid) }}
-                    </div>
+    <!-- QUICK ACTIONS -->
+    <div class="section-title">Quick Actions</div>
+    <v-row dense class="mb-4">
+      <v-col cols="4" v-for="a in actions" :key="a.title">
+        <v-card
+          rounded="2xl"
+          elevation="2"
+          class="action-card"
+          @click="a.action?.()"
+        >
+          <v-avatar size="46" class="action-avatar">
+            <v-icon size="22">{{ a.icon }}</v-icon>
+          </v-avatar>
+          <div class="text-caption font-weight-medium mt-2">
+            {{ a.title }}
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
 
-                    <v-progress-linear :model-value="salesProgress" height="6" color="primary"
-                        class="mt-3 rounded-pill" />
-                </v-card>
-            </v-col>
+    <!-- RECENT TRANSACTIONS -->
+    <!--<div class="section-title">Recent Transactions</div>
+    <v-card rounded="2xl" elevation="3" class="mb-5">
+      <v-list density="comfortable">
+        <v-list-item v-for="t in transactions" :key="t.id">
+          <template #prepend>
+            <v-avatar size="38" class="txn-avatar">
+              <v-icon size="18">mdi-receipt-text</v-icon>
+            </v-avatar>
+          </template>
 
-            <!-- 📦 Purchases -->
-            <v-col cols="12" md="6">
-                <v-card elevation="2" class="pa-4">
-                    <div class="d-flex justify-space-between align-center mb-2">
-                        <h3 class="text-subtitle-1 font-weight-bold">Purchases</h3>
-                        <v-select v-model="periods.purchases" :items="periodOptions" density="compact" hide-details
-                            variant="outlined" style="max-width: 120px" @update:modelValue="loadPurchases" />
-                    </div>
+          <v-list-item-title class="text-body-2 font-weight-medium">
+            {{ t.customer }}
+          </v-list-item-title>
 
-                    <div class="text-h6 font-weight-bold">
-                        {{ formatAmount(purchases.paid) }}
-                    </div>
-                    <div class="text-caption">
-                        Unpaid: {{ formatAmount(purchases.unpaid) }}
-                    </div>
+          <v-list-item-subtitle class="text-caption">
+            {{ t.method }} payment
+          </v-list-item-subtitle>
 
-                    <v-progress-linear :model-value="purchaseProgress" height="6" color="pink"
-                        class="mt-3 rounded-pill" />
-                </v-card>
-            </v-col>
+          <template #append>
+            <div class="text-body-2 font-weight-bold">₹ {{ t.amount }}</div>
+          </template>
+        </v-list-item>
 
-            <!-- 📉 Profit & Loss -->
-            <v-col cols="12" md="6">
-                <v-card elevation="2" class="pa-4">
-                    <div class="d-flex justify-space-between align-center mb-3">
-                        <h3 class="text-subtitle-1 font-weight-bold">Profit & Loss</h3>
-                        <v-select v-model="periods.profitloss" :items="periodOptions" density="compact" hide-details
-                            variant="outlined" style="max-width: 140px" @update:modelValue="loadProfitLoss" />
-                    </div>
+        <v-list-item v-if="!transactions.length && !loading">
+          <v-list-item-title class="text-caption text-medium-emphasis">
+            No transactions today
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-card>-->
 
-                    <client-only>
-                        <apexchart type="bar" height="280" :options="profitLossOptions" :series="profitLossSeries" />
-                    </client-only>
-                </v-card>
-            </v-col>
+    <!-- 🆕 RECENT ORDERS -->
+    <div class="section-title">Recent Orders</div>
+    <v-card rounded="2xl" variant="flat" class="">
+      <v-list density="comfortable">
+        <v-list-item v-for="o in recentOrders" :key="o.id" :to="`/pos/orders/${o.id}`">
+          <template #prepend>
+            <v-avatar size="38" class="order-avatar">
+              <v-icon size="18">mdi-file-document</v-icon>
+            </v-avatar>
+          </template>
 
-            <!-- 🍽 Expense -->
-            <v-col cols="12" md="6">
-                <v-card elevation="2" class="pa-4">
-                    <div class="d-flex justify-space-between align-center mb-3">
-                        <h3 class="text-subtitle-1 font-weight-bold">Expenses</h3>
-                        <v-select v-model="periods.expense" :items="periodOptions" density="compact" hide-details
-                            variant="outlined" style="max-width: 120px" @update:modelValue="loadExpense" />
-                    </div>
+          <v-list-item-title class="text-body-2 font-weight-medium">
+            {{ o.customer }}
+          </v-list-item-title>
 
-                    <client-only>
-                        <apexchart type="donut" height="280" :options="expenseOptions" :series="expenseSeries" />
-                    </client-only>
+          <v-list-item-subtitle class="text-caption">
+            {{ o.invoice_number }}
+          </v-list-item-subtitle>
 
-                    <div class="text-center text-caption mt-2">
-                        Total: <b>{{ formatAmount(expenseTotal) }}</b>
-                    </div>
-                </v-card>
-            </v-col>
-        </v-row>
-    </v-container>
+          <template #append>
+            <div class="text-right">
+              <div class="text-body-2 font-weight-bold">₹ {{ o.amount }}</div>
+              <v-chip
+                size="x-small"
+                :color="statusColor(o.payment_status)"
+                variant="flat"
+              >
+                {{ o.payment_status }}
+              </v-chip>
+            </div>
+          </template>
+        </v-list-item>
+
+        <v-list-item v-if="!recentOrders.length && !loading">
+          <v-list-item-title class="text-caption text-medium-emphasis">
+            No recent orders
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-card>
+
+    <!-- FAB -->
+    <v-fab
+      icon="mdi-plus"
+      color="primary"
+      location="bottom end"
+      app
+      size="large"
+      elevation="12"
+      @click="onNewSale"
+    />
+  </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue"
-import { useDashboard } from "@/composables/pos/useDashboard"
-import { useExpense } from "@/composables/pos/useExpense"
+import { onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useDashboard } from "@/composables/pos/useDashboard";
 
-const { $formatPrice } = useNuxtApp()
+const router = useRouter();
 
-const companyId = "LOCAL_COMPANY"
+const { stats, transactions, recentOrders, loading, loadDashboard } = useDashboard();
 
-/* ---------------- COMPOSABLES ---------------- */
-const dashboard = useDashboard(companyId)
-const expense = useExpense(companyId)
+onMounted(loadDashboard);
 
-/* ---------------- STATE ---------------- */
-const periods = ref({
-  cashflow: "thisYear",
-  sales: "thisYear",
-  purchases: "thisYear",
-  profitloss: "thisYear",
-  expense: "thisYear",
-})
+/* ACTIONS */
+const onNewSale = () => router.push("/pos/system");
+const OnProduct = () => router.push("/pos/products");
+const OnOrder = () => router.push("/pos/orders");
+const OnPayments = () => router.push("/pos/payments");
+const OnSettings = () => router.push("/pos/settings");
 
-const periodOptions = [
-  { title: "This Year", value: "thisYear" },
-  { title: "This Quarter", value: "thisQuarter" },
-  { title: "This Month", value: "thisMonth" },
-  { title: "Year to Date", value: "yearToDate" },
-]
+const statusColor = (s: string) => {
+  if (s === "Paid") return "green";
+  if (s === "Partial") return "orange";
+  return "red";
+};
 
-const sales = ref({ paid: 0, unpaid: 0 })
-const purchases = ref({ paid: 0, unpaid: 0 })
-const cashflow = ref({ labels: [], inflow: [], outflow: [] })
-const profitloss = ref({ labels: [], values: [] })
-
-const expenseData = ref<any[]>([])
-const expenseTotal = ref(0)
-
-/* ---------------- LOADERS ---------------- */
-const loadCashflow = async () => {
-  cashflow.value = await dashboard.getCashflow(periods.value.cashflow)
-}
-
-const loadSales = async () => {
-  sales.value = await dashboard.getSalesSummary(periods.value.sales)
-}
-
-const loadPurchases = async () => {
-  purchases.value = await dashboard.getPurchaseSummary(periods.value.purchases)
-}
-
-const loadProfitLoss = async () => {
-  profitloss.value = await dashboard.getProfitLoss(periods.value.profitloss)
-}
-
-const loadExpense = async () => {
-  const res = await expense.getExpenseChart(periods.value.expense)
-  expenseData.value = res.items
-  expenseTotal.value = res.total
-}
-
-/* ---------------- HELPERS ---------------- */
-const formatAmount = (v: number) => $formatPrice(v)
-
-const salesProgress = computed(() => {
-  const t = sales.value.paid + sales.value.unpaid
-  return t ? (sales.value.paid / t) * 100 : 0
-})
-
-const purchaseProgress = computed(() => {
-  const t = purchases.value.paid + purchases.value.unpaid
-  return t ? (purchases.value.paid / t) * 100 : 0
-})
-
-const cashflowSeries = computed(() => [
-  { name: "Inflow", data: cashflow.value.inflow },
-  { name: "Outflow", data: cashflow.value.outflow },
-])
-
-const profitLossSeries = computed(() => [
-  { name: "Profit / Loss", data: profitloss.value.values },
-])
-
-const expenseSeries = computed(() =>
-  expenseData.value.map(i => i.total)
-)
-
-/* ---------------- CHART OPTIONS ---------------- */
-const cashflowOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  stroke: { curve: "smooth", width: 3 },
-  xaxis: { categories: cashflow.value.labels },
-  dataLabels: { enabled: false },
-}))
-
-const profitLossOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  xaxis: { categories: profitloss.value.labels },
-  dataLabels: { enabled: false },
-}))
-
-const expenseOptions = computed(() => ({
-  labels: expenseData.value.map(i => i.category),
-  legend: { position: "bottom" },
-}))
-
-/* ---------------- INIT ---------------- */
-onMounted(async () => {
-  await Promise.all([
-    loadCashflow(),
-    loadSales(),
-    loadPurchases(),
-    loadProfitLoss(),
-    loadExpense(),
-  ])
-})
+const actions = [
+  { title: "New Sale", icon: "mdi-plus", action: onNewSale },
+  { title: "Products", icon: "mdi-package-variant", action: OnProduct },
+  { title: "Customers", icon: "mdi-account-group" },
+  { title: "Orders", icon: "mdi-chart-box", action: OnOrder },
+  { title: "Payments", icon: "mdi-qrcode-scan", action: OnPayments },
+  { title: "Settings", icon: "mdi-cog", action: OnSettings },
+];
 </script>
+
+<style scoped>
+.stat-card {
+  padding: 22px;
+}
+.section-title {
+  margin: 28px 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.action-card {
+  text-align: center;
+  padding: 18px 8px;
+}
+.action-avatar,
+.txn-avatar,
+.order-avatar {
+  background: #f1f5f9;
+}
+</style>

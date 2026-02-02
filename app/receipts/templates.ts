@@ -1,0 +1,13 @@
+export type ReceiptTemplateType =
+  | 'CLASSIC'
+  | 'GST'
+  | 'COMPACT'
+  | 'DETAILED'
+  | 'KOT'
+  | 'GST_SALES'
+  | 'GST_PURCHASE'
+  | 'GST_SALES_RETURN'
+  | 'GST_PURCHASE_RETURN'
+  | 'GST_INVOICE'
+  | 'NONGST_INVOICE'
+  | 'REFUND'

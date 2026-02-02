@@ -1,14 +1,16 @@
-import { customers, customer_addresses } from "@/db/schema";
+import { parties, party_addresses } from "@/db/schema";
 import { dbReady } from "@/db/dbReady";
 import { enqueueSync } from "./useSyncQueue";
 import { uuidv4 } from "@/utils/uuid";
+import { eq } from "drizzle-orm";
 
 const now = () => Math.floor(Date.now() / 1000);
 
 export function useCustomers() {
-  /* ================= CREATE CUSTOMER ================= */
+
+  /* ================= CREATE / GET CUSTOMER ================= */
   const createCustomer = async (data: {
-    name: string;
+    name?: string;
     phone?: string;
     email?: string;
     gstin?: string;
@@ -16,26 +18,41 @@ export function useCustomers() {
   }) => {
     const { drizzleDb, persistDb } = await dbReady();
 
+    // 🔍 1. Prevent duplicate by phone
+    if (data.phone) {
+      const existing = await drizzleDb
+        .select()
+        .from(parties)
+        .where(eq(parties.phone, data.phone))
+        .limit(1);
+
+      if (existing.length > 0) {
+        return existing[0].id; // ✅ return existing customer
+      }
+    }
+
+    // 🆕 2. Create new customer
     const id = uuidv4();
 
     const row = {
       id,
-      name: data.name,
-      phone: data.phone,
-      email: data.email,
-      gstin: data.gstin,
       company_id: data.company_id,
+      type: "CUSTOMER",
+      name: data.name || "Walk-in Customer",
+      phone: data.phone ?? null,
+      email: data.email ?? null,
+      gstin: data.gstin ?? null,
       created_at: now(),
       updated_at: now(),
     };
 
-    await drizzleDb.insert(customers).values(row);
+    await drizzleDb.insert(parties).values(row);
 
     await enqueueSync({
-      entity: "customers",
+      entity: "parties",
       entity_id: id,
       action: "CREATE",
-      payload: row, // sync exact row
+      payload: row,
     });
 
     await persistDb();
@@ -44,10 +61,9 @@ export function useCustomers() {
 
   /* ================= ADD CUSTOMER ADDRESS ================= */
   const addCustomerAddress = async (data: {
-    customer_id: string;
+    party_id: string;
     address_line1?: string;
     address_line2?: string;
-    address_line3?: string;
     city?: string;
     state?: string;
     country?: string;
@@ -61,30 +77,30 @@ export function useCustomers() {
     // 🔒 Only one default address per customer
     if (data.is_default) {
       await drizzleDb
-        .update(customer_addresses)
+        .update(party_addresses)
         .set({ is_default: 0 })
-        .where({ customer_id: data.customer_id });
+        .where(eq(party_addresses.party_id, data.party_id));
     }
 
     const row = {
       id,
-      customer_id: data.customer_id,
-      address_line1: data.address_line1,
-      address_line2: data.address_line2,
-      address_line3: data.address_line3,
-      city: data.city,
-      state: data.state,
-      country: data.country,
-      pincode: data.pincode,
+      party_id: data.party_id,
+      address_line1: data.address_line1 ?? null,
+      address_line2: data.address_line2 ?? null,
+      city: data.city ?? null,
+      state: data.state ?? null,
+      country: data.country ?? null,
+      pincode: data.pincode ?? null,
+      address_type: "BILLING",
       is_default: data.is_default ? 1 : 0,
       created_at: now(),
       updated_at: now(),
     };
 
-    await drizzleDb.insert(customer_addresses).values(row);
+    await drizzleDb.insert(party_addresses).values(row);
 
     await enqueueSync({
-      entity: "customer_addresses",
+      entity: "party_addresses",
       entity_id: id,
       action: "CREATE",
       payload: row,
@@ -99,20 +115,3 @@ export function useCustomers() {
     addCustomerAddress,
   };
 }
-
-
-// const { createCustomer, addCustomerAddress } = useCustomers();
-
-// const customerId = await createCustomer({
-//   name: "Ravi Kumar",
-//   phone: "9XXXXXXXXX",
-//   company_id: COMPANY_ID,
-// });
-
-// await addCustomerAddress({
-//   customer_id: customerId,
-//   city: "Bengaluru",
-//   state: "KA",
-//   pincode: "560001",
-//   is_default: true,
-// });
