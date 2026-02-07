@@ -16,27 +16,14 @@
         <v-text-field label="Search product" v-model="search" clearable />
       </v-col>
       <v-col cols="6">
-        <v-select
-          label="Category"
-          :items="categories"
-          item-title="name"
-          item-value="id"
-          v-model="selectedCategory"
-          clearable
-        />
+        <v-select label="Category" :items="categories" item-title="name" item-value="id" v-model="selectedCategory"
+          clearable />
       </v-col>
     </v-row>
 
     <!-- PRODUCTS TABLE -->
-    <v-data-table
-      :sort-desc.sync="sortAsc"
-      :headers="headers"
-      :items="filteredProducts"
-      item-value="id"
-      show-expand
-      class="elevation-1"
-      :loading="loading"
-    >
+    <v-data-table :sort-desc.sync="sortAsc" :headers="headers" :items="filteredProducts" item-value="id" show-expand
+      class="elevation-1" :loading="loading">
       <template #item.name="{ item }">
         <strong>{{ item.name }}</strong>
         <div class="text-caption text-grey">SKU: {{ item.sku || "-" }}</div>
@@ -90,13 +77,7 @@
                     <v-btn icon size="x-small" variant="text" @click="openVariantDialog(item, variant)">
                       <v-icon>mdi-pencil</v-icon>
                     </v-btn>
-                    <v-btn
-                      variant="text"
-                      icon
-                      size="x-small"
-                      color="red"
-                      @click="deleteVariant(item, variant.id)"
-                    >
+                    <v-btn variant="text" icon size="x-small" color="red" @click="deleteVariant(item, variant.id)">
                       <v-icon>mdi-delete</v-icon>
                     </v-btn>
                   </td>
@@ -106,13 +87,7 @@
                 </tr>
               </tbody>
             </v-table>
-            <v-btn
-              small
-              color="primary"
-              class="mt-2"
-              @click="openVariantDialog(item)"
-              >Add Variant</v-btn
-            >
+            <v-btn small color="primary" class="mt-2" @click="openVariantDialog(item)">Add Variant</v-btn>
           </v-card>
         </td>
       </template>
@@ -130,26 +105,12 @@
         }}</v-card-title>
         <v-card-text>
           <v-form ref="formRef" v-model="formValid">
-            <v-text-field
-              label="Name"
-              v-model="form.name"
-              :rules="[(v) => !!v || 'Required']"
-            />
+            <v-text-field label="Name" v-model="form.name" :rules="[(v) => !!v || 'Required']" />
             <v-text-field label="SKU" v-model="form.sku" />
-            <v-text-field
-              label="Price"
-              type="number"
-              v-model.number="form.price"
-            />
+            <v-text-field label="Price" type="number" v-model.number="form.price" />
             <v-text-field label="MRP" type="number" v-model.number="form.mrp" />
-            <v-select
-              label="Category"
-              :items="categories"
-              item-title="name"
-              item-value="id"
-              v-model="form.category_id"
-              clearable
-            />
+            <v-select label="Category" :items="categories" item-title="name" item-value="id" v-model="form.category_id"
+              clearable />
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -172,21 +133,9 @@
           <v-form ref="variantFormRef" v-model="variantFormValid">
             <v-text-field label="Variant Name" v-model="variantForm.variant" />
             <v-text-field label="SKU" v-model="variantForm.sku" />
-            <v-text-field
-              label="Price"
-              type="number"
-              v-model.number="variantForm.price"
-            />
-            <v-text-field
-              label="MRP"
-              type="number"
-              v-model.number="variantForm.mrp"
-            />
-            <v-text-field
-              label="Quantity"
-              type="number"
-              v-model.number="variantForm.quantity"
-            />
+            <v-text-field label="Price" type="number" v-model.number="variantForm.price" />
+            <v-text-field label="MRP" type="number" v-model.number="variantForm.mrp" />
+            <v-text-field label="Quantity" type="number" v-model.number="variantForm.quantity" />
             <v-text-field label="Location" v-model="variantForm.location" />
           </v-form>
         </v-card-text>
@@ -209,8 +158,7 @@ import { useCategories } from "@/composables/pos/useCategories";
 
 const COMPANY_ID = "LOCAL_COMPANY";
 
-const { listProducts, createProduct, updateProduct, deleteProduct } =
-  useProducts();
+const { listProducts, createProduct, createVariant, updateVariant, deleteVariants, updateProduct, deleteProduct } = useProducts();
 const { getCategories } = useCategories();
 
 const sortDesc = ref<boolean[]>([true]); // descending for latest first
@@ -342,35 +290,46 @@ const removeProduct = async (id: string) => {
 const openVariantDialog = (product: any, variant: any = null) => {
   currentProduct = product;
   variantEdit.value = !!variant;
+
   variantForm.value = variant
     ? { ...variant }
     : {
-        id: null,
-        sku: "",
-        variant: "",
-        price: 0,
-        mrp: 0,
-        quantity: 0,
-        location: "",
-      };
+      id: null,
+      sku: "",
+      variant: "",
+      price: 0,
+      mrp: 0,
+      quantity: 0,
+      location: "",
+    };
+
   variantDialog.value = true;
 };
 
 const submitVariant = async () => {
   if (!variantFormRef.value?.validate()) return;
 
+  const payload = {
+    sku: variantForm.value.sku,
+    variant: variantForm.value.variant,
+    price: variantForm.value.price,
+    mrp: variantForm.value.mrp,
+    quantity: variantForm.value.quantity,
+    location: variantForm.value.location,
+    company_id: COMPANY_ID,
+  };
+
   if (variantEdit.value) {
-    const index = currentProduct.items.findIndex(
-      (v: any) => v.id === variantForm.value.id
-    );
-    if (index >= 0) currentProduct.items[index] = { ...variantForm.value };
+    // 🔥 UPDATE VARIANT IN DB
+    await updateVariant(variantForm.value.id, payload);
   } else {
-    currentProduct.items.push({
-      ...variantForm.value,
-      id: crypto.randomUUID(),
-    });
+    // 🔥 CREATE VARIANT LINKED TO PRODUCT
+    await createVariant(currentProduct.id, payload);
   }
+
   variantDialog.value = false;
+
+  // Reset form
   variantForm.value = {
     id: null,
     sku: "",
@@ -380,9 +339,17 @@ const submitVariant = async () => {
     quantity: 0,
     location: "",
   };
+
+  // 🔥 Refresh products so variants reload from DB
+  await loadProducts();
 };
 
-const deleteVariant = (product: any, variantId: string) => {
-  product.items = product.items.filter((v: any) => v.id !== variantId);
+const deleteVariant = async (product: any, variantId: string) => {
+  if (!confirm("Delete this variant?")) return;
+
+  // You must create a deleteVariant API in composable
+  await deleteVariants(variantId)
+  await loadProducts()
+
 };
 </script>

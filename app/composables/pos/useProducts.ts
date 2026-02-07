@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
-import { products, items } from "@/db/schema";
+import { nanoid } from "nanoid";
+import { products, categories, items } from "@/db/schema";
 import { useDb } from "@/db/client";
 
 const now = () => Math.floor(Date.now() / 1000);
@@ -113,10 +114,115 @@ export const useProducts = () => {
     await persistDb();
   };
 
+  /* ================= CREATE VARIANT ================= */
+  const createVariant = async (productId: string, variant: any) => {
+    const { drizzleDb, persistDb } = await useDb();
+
+    const id = uuidv4();
+    await drizzleDb.insert(items).values({
+      id,
+      product_id: productId,
+      sku: variant.sku,
+      variant: variant.variant,
+      price: variant.price,
+      mrp: variant.mrp,
+      quantity: variant.quantity,
+      location: variant.location,
+      tax_rate_id: variant.tax_rate_id ?? null,
+      company_id: variant.company_id,
+      created_at: now(),
+      updated_at: now(),
+    });
+
+    await persistDb();
+    return id;
+  };
+
+  /* ================= UPDATE VARIANT ================= */
+  const updateVariant = async (variantId: string, updates: any) => {
+    const { drizzleDb, persistDb } = await useDb();
+
+    await drizzleDb
+      .update(items)
+      .set({ ...updates, updated_at: now() })
+      .where(eq(items.id, variantId));
+
+    await persistDb();
+  };
+
+  /* ================= DELETE VARIANT ================= */
+  const deleteVariants = async (variantId: string) => {
+    const { drizzleDb, persistDb } = await useDb();
+
+    await drizzleDb
+      .delete(items)
+      .where(eq(items.id, variantId));
+
+    await persistDb();
+  };
+
+  // -----------------------------
+  // FETCH ALL CATEGORIES
+  // -----------------------------
+  async function fetchCategories(company_id) {
+    const { drizzleDb, persistDb } = await useDb();
+    return await drizzleDb
+      .select()
+      .from(categories)
+      .where(eq(categories.company_id, company_id));
+    await persistDb();
+  }
+
+
+  // -----------------------------
+  // CREATE CATEGORY
+  // -----------------------------
+  async function createCategory({ name, company_id, parent_id = null }) {
+    const id = crypto.randomUUID();
+    const { drizzleDb, persistDb } = await useDb();
+    await drizzleDb.insert(categories).values({
+      id,
+      name,
+      company_id,
+      parent_id,
+      created_at: Date.now(),
+      updated_at: Date.now()
+    });
+    await persistDb();
+
+    return id;
+  }
+
+  // -----------------------------
+  // CREATE SUBCATEGORY
+  // -----------------------------
+  async function createSubCategory({ name, company_id, parent_id }) {
+    const id = crypto.randomUUID();
+   const { drizzleDb, persistDb } = await useDb();
+    await drizzleDb.insert(categories).values({
+      id,
+      name,
+      company_id,
+      parent_id,
+      created_at: Date.now(),
+      updated_at: Date.now()
+    });
+    await persistDb();
+
+    return id;
+  }
+
   return {
     createProduct,
     listProducts,
     updateProduct,
     deleteProduct,
+    createVariant,
+    updateVariant,
+    deleteVariants,
+    fetchCategories,
+    createCategory,
+    createSubCategory,
   };
 };
+

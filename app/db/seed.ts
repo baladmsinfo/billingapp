@@ -171,7 +171,7 @@ export async function seed(reset: boolean = true) {
       const subId = uuidv4();
       subCategories.push({ id: subId, parent: parentId });
 
-      db.exec(`
+      db.exec(` 
         INSERT INTO categories (
           id, name, description, company_id, parent_id, created_at, updated_at
         ) VALUES (
@@ -187,67 +187,70 @@ export async function seed(reset: boolean = true) {
     }
   }
 
-  // =====================================
-  // PRODUCTS + ITEMS
-  // =====================================
-  const products: string[] = [];
-  const items: { id: string; pid: string; price: number }[] = [];
+  // ===============================
+  // PRODUCTS + ITEMS (NO VENDOR LINK)
+  // ===============================
+  const productIds: string[] = [];
+  const itemList: { id: string; pid: string; price: number }[] = [];
 
   for (let i = 1; i <= 60; i++) {
-    const id = uuidv4();
-    products.push(id);
+    const productId = uuidv4();
+    productIds.push(productId);
 
     const parent = parentCategories[rand(0, parentCategories.length - 1)];
     const subs = subCategories.filter((s) => s.parent === parent);
     const sub = subs[rand(0, subs.length - 1)];
 
-    const price = rand(50, 500);
-    const mrp = price + rand(20, 100);
+    const basePrice = rand(50, 500);
+    const mrp = basePrice + rand(20, 100);
 
     db.exec(`
-      INSERT INTO products (
-        id, name, sku, description,
-        price, mrp,
-        category_id, sub_category_id,
+    INSERT INTO products (
+      id, name, sku, description,
+      price, mrp,
+      category_id, sub_category_id,
+      company_id, created_at, updated_at
+    ) VALUES (
+      '${productId}',
+      'Product ${i}',
+      'SKU-${i}',
+      'Product description ${i}',
+      ${basePrice},
+      ${mrp},
+      '${parent}',
+      '${sub.id}',
+      '${COMPANY_ID}',
+      ${now},
+      ${now}
+    );
+  `);
+
+    // Create ONLY company-owned items
+    const variantCount = rand(1, 3);
+    for (let v = 1; v <= variantCount; v++) {
+      const itemId = uuidv4();
+      const variantPrice = basePrice + rand(0, 50);
+
+      itemList.push({ id: itemId, pid: productId, price: variantPrice });
+
+      db.exec(`
+      INSERT INTO items (
+        id, product_id, sku, variant,
+        price, mrp, quantity,
         company_id, created_at, updated_at
       ) VALUES (
-        '${id}',
-        'Product ${i}',
-        'SKU-${i}',
-        'Product description ${i}',
-        ${price},
-        ${mrp},
-        '${parent}',
-        '${sub.id}',
+        '${itemId}',
+        '${productId}',
+        'ITEM-${i}-${v}',
+        'Variant ${v}',
+        ${variantPrice},
+        ${variantPrice + 50},
+        ${rand(5, 100)},
         '${COMPANY_ID}',
         ${now},
         ${now}
       );
     `);
-
-    for (let v = 1; v <= rand(1, 3); v++) {
-      const itemId = uuidv4();
-      const itemPrice = price + rand(0, 50);
-      items.push({ id: itemId, pid: id, price: itemPrice });
-
-      db.exec(`
-        INSERT INTO items (
-          id, product_id, sku, variant,
-          price, mrp, quantity,
-          company_id, created_at, updated_at
-        ) VALUES (
-          '${itemId}',
-          '${id}',
-          'ITEM-${i}-${v}',
-          'Variant ${v}',
-          ${itemPrice},
-          ${itemPrice + 50},
-          ${rand(5, 100)},
-          '${COMPANY_ID}',
-          ${now},
-          ${now}
-        );
-      `);
     }
   }
 
@@ -274,7 +277,7 @@ export async function seed(reset: boolean = true) {
 
     const cartItemCount = rand(2, 5);
     for (let ci = 0; ci < cartItemCount; ci++) {
-      const item = items[rand(0, items.length - 1)];
+      const item = itemList[rand(0, itemList.length - 1)];
       const qty = rand(1, 5);
 
       db.exec(`
@@ -324,7 +327,7 @@ export async function seed(reset: boolean = true) {
     let total = 0;
     const lineCount = rand(1, 5);
     for (let j = 0; j < lineCount; j++) {
-      const item = items[rand(0, items.length - 1)];
+      const item = itemList[rand(0, itemList.length - 1)];
       const qty = rand(1, 5);
       total += qty * item.price;
 

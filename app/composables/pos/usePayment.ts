@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { payments, invoices, invoice_items } from "@/db/schema";
+import { payments, invoices, parties, invoice_items } from "@/db/schema";
 import { useDb } from "@/db/client.js";
 import { enqueueSync } from "@/composables/pos/useSyncQueue";
 
@@ -23,12 +23,12 @@ export function usePayment() {
     customer_id?: string;
     amount: number;
     method:
-      | "CASH"
-      | "CARD"
-      | "UPI"
-      | "BANK_TRANSFER"
-      | "CHEQUE"
-      | "OTHER";
+    | "CASH"
+    | "CARD"
+    | "UPI"
+    | "BANK_TRANSFER"
+    | "CHEQUE"
+    | "OTHER";
     reference?: string;
     type: "ADVANCE" | "PARTIAL" | "FULL";
   }) => {
@@ -166,16 +166,6 @@ export function usePayment() {
 
   /* ================= FETCH ================= */
 
-  const getInvoicePayments = async (invoice_id: string) => {
-    const { drizzleDb } = await dbReady();
-
-    return drizzleDb
-      .select()
-      .from(payments)
-      .where(eq(payments.invoice_id, invoice_id))
-      .orderBy(desc(payments.date));
-  };
-
   const getCompanyPayments = async (company_id: string) => {
     const { drizzleDb } = await dbReady();
 
@@ -184,6 +174,62 @@ export function usePayment() {
       .from(payments)
       .where(eq(payments.company_id, company_id))
       .orderBy(desc(payments.date));
+  };
+
+
+  const listPaymentsByCompany = async ({ company_id }) => {
+    const { drizzleDb, persistDb } = await useDb();
+    return await drizzleDb
+      .select()
+      .from(payments)
+      .where(eq(payments.company_id, company_id))
+      .orderBy(desc(payments.date))
+  }
+
+  const getInvoicePayments = async (invoice_id: string) => {
+    const { drizzleDb, persistDb } = await useDb();
+    return await drizzleDb
+      .select()
+      .from(payments)
+      .where(eq(payments.invoice_id, invoice_id))
+      .orderBy(desc(payments.date))
+  }
+
+  const getPaymentById = async (id: string) => {
+    const { drizzleDb } = await dbReady();
+
+    // Get payment
+    const [payment] = await drizzleDb
+      .select()
+      .from(payments)
+      .where(eq(payments.id, id))
+      .limit(1);
+
+    if (!payment) return null;
+
+    // Fetch linked invoice (if exists)
+    let invoice = null;
+    if (payment.invoice_id) {
+      const [inv] = await drizzleDb
+        .select()
+        .from(invoices)
+        .where(eq(invoices.id, payment.invoice_id))
+        .limit(1);
+      invoice = inv || null;
+    }
+
+    // Fetch party (customer)
+    let party = null;
+    if (payment.party_id) {
+      const [p] = await drizzleDb
+        .select()
+        .from(parties)
+        .where(eq(parties.id, payment.party_id))
+        .limit(1);
+      party = p || null;
+    }
+
+    return { payment, invoice, party };
   };
 
   const getCustomerPayments = async (customer_id: string) => {
@@ -203,5 +249,7 @@ export function usePayment() {
     getCompanyPayments,
     getCustomerPayments,
     getCustomerAdvanceBalance,
+    getPaymentById,
+    listPaymentsByCompany
   };
 }

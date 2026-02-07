@@ -66,6 +66,8 @@ export function useDbModels() {
   const validateCompanyPin = async ({ pin, device_id }) => {
     const { drizzleDb } = await dbReady();
     const rows = await drizzleDb.select().from(companies).limit(1);
+    console.log(rows);
+    
     if (!rows.length) throw new Error("POS not initialized");
 
     const company = rows[0];

@@ -13,24 +13,11 @@
     </v-card>
 
     <!-- SEARCH -->
-    <v-text-field
-      v-model="search"
-      placeholder="Search products"
-      prepend-inner-icon="mdi-magnify"
-      variant="solo"
-      rounded="xl"
-      hide-details
-      density="comfortable"
-      class="mb-4"
-    />
+    <v-text-field v-model="search" placeholder="Search products" prepend-inner-icon="mdi-magnify" variant="solo"
+      rounded="xl" hide-details density="comfortable" class="mb-4" />
 
     <!-- CATEGORY TABS -->
-    <v-tabs
-      v-model="selectedCategory"
-      grow
-      density="comfortable"
-      class="mb-4 category-tabs"
-    >
+    <v-tabs v-model="selectedCategory" grow density="comfortable" class="mb-4 category-tabs">
       <v-tab :value="null">All</v-tab>
       <v-tab v-for="cat in categories" :key="cat.id" :value="cat.id">
         {{ cat.name }}
@@ -65,16 +52,9 @@
           </div>
 
           <!-- PRICE -->
+          <!-- STOCK INDICATOR ONLY -->
           <div class="price-bar">
-            <div>
-              <div class="price">₹{{ product.price }}</div>
-              <div class="mrp">MRP ₹{{ product.mrp || "-" }}</div>
-            </div>
-
-            <v-chip
-              size="small"
-              :color="(product.stock ?? 0) > 0 ? 'green' : 'red'"
-            >
+            <v-chip size="small" :color="(product.stock ?? 0) > 0 ? 'green' : 'red'">
               {{ (product.stock ?? 0) > 0 ? "In Stock" : "Out of Stock" }}
             </v-chip>
           </div>
@@ -97,7 +77,7 @@
                     <v-list-item-content>
                       <v-list-item-title>{{ variant.variant || "Default" }}</v-list-item-title>
                       <v-list-item-subtitle>
-                        SKU: {{ variant.sku || "-" }} • ₹{{ variant.price ?? product.price }} • Qty {{ variant.quantity ?? 0 }}
+                        SKU: {{ variant.sku || "-" }} • ₹{{ variant.price }} • Qty {{ variant.quantity ?? 0 }}
                       </v-list-item-subtitle>
                     </v-list-item-content>
                     <template #append>
@@ -107,14 +87,8 @@
                     </template>
                   </v-list-item>
 
-                  <v-btn
-                    block
-                    rounded="xl"
-                    variant="tonal"
-                    color="primary"
-                    class="mt-2"
-                    @click="openVariantDialog(product)"
-                  >
+                  <v-btn block rounded="xl" variant="tonal" color="primary" class="mt-2"
+                    @click="openVariantDialog(product)">
                     + Add Variant
                   </v-btn>
                 </v-list>
@@ -127,12 +101,7 @@
     </v-row>
 
     <!-- EMPTY -->
-    <v-card
-      v-if="!filteredProducts.length"
-      rounded="xl"
-      elevation="0"
-      class="pa-6 text-center"
-    >
+    <v-card v-if="!filteredProducts.length" rounded="xl" elevation="0" class="pa-6 text-center">
       <v-icon size="48" color="grey">mdi-package-variant</v-icon>
       <div class="text-subtitle-1 mt-2">No products yet</div>
       <v-btn color="primary" rounded="xl" class="mt-3" @click="openAdd">
@@ -147,33 +116,56 @@
 
     <!-- PRODUCT DIALOG -->
     <v-dialog v-model="productDialog" fullscreen transition="dialog-bottom-transition">
-      <v-card>
-        <v-toolbar flat>
+      <v-card class="bg-grey-lighten-4">
+
+        <!-- HEADER -->
+        <v-toolbar flat color="primary" dark>
           <v-btn icon @click="productDialog = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
           <v-toolbar-title>{{ isEdit ? "Edit Product" : "Add Product" }}</v-toolbar-title>
           <v-spacer />
-          <v-btn color="primary" @click="submitProduct">Save</v-btn>
+
+          <v-btn variant="text" @click="submitProduct">
+            Save
+          </v-btn>
         </v-toolbar>
 
         <v-card-text>
           <v-form ref="formRef" v-model="formValid">
-            <v-text-field label="Name" v-model="form.name" />
-            <v-text-field label="SKU" v-model="form.sku" />
-            <v-text-field label="Price" type="number" v-model.number="form.price" />
-            <v-text-field label="MRP" type="number" v-model.number="form.mrp" />
-            <v-select
-              label="Category"
-              :items="categories"
-              item-title="name"
-              item-value="id"
-              v-model="form.category_id"
-            />
+
+            <!-- CATEGORY SELECT + BUTTON -->
+            <div class="d-flex mb-4 ga-2 align-center select-btn-align">
+              <v-select label="Category" :items="categories" item-title="name" item-value="id" rounded="lg"
+                variant="solo" v-model="form.category_id" class="flex-grow-1" />
+
+              <v-btn icon color="primary" variant="tonal" @click="openCategoryDialog">
+                <v-icon>mdi-plus-circle</v-icon>
+              </v-btn>
+            </div>
+
+            <!-- SUBCATEGORY SELECT + BUTTON -->
+            <div class="d-flex ga-2 mb-4 align-center select-btn-align">
+              <v-select label="Subcategory" :items="subcategoriesFiltered" item-title="name" item-value="id"
+                rounded="lg" variant="solo" v-model="form.sub_category_id" class="flex-grow-1"
+                :disabled="!form.category_id" />
+
+              <v-btn icon color="primary" variant="tonal" :disabled="!form.category_id" @click="openSubcategoryDialog">
+                <v-icon>mdi-plus-circle</v-icon>
+              </v-btn>
+            </div>
+
+            <!-- PRODUCT NAME -->
+            <v-text-field label="Product Name" v-model="form.name" variant="solo" rounded="lg" class="mb-4" />
+
+            <!-- SKU -->
+            <v-text-field label="SKU" v-model="form.sku" variant="solo" rounded="lg" class="mb-4" />
+
           </v-form>
         </v-card-text>
       </v-card>
     </v-dialog>
+
 
     <!-- VARIANT DIALOG -->
     <v-dialog v-model="variantDialog" fullscreen transition="dialog-bottom-transition">
@@ -200,23 +192,69 @@
       </v-card>
     </v-dialog>
 
+    <!-- CATEGORY CREATE DIALOG -->
+    <v-dialog v-model="dialogCreateCategory" max-width="420px">
+      <v-card class="pa-5 rounded-xl">
+        <div class="d-flex align-center mb-3">
+          <v-icon color="primary" size="28">mdi-shape-plus</v-icon>
+          <span class="text-h6 font-weight-bold ml-2">Create Category</span>
+        </div>
+
+        <v-text-field v-model="newCategoryName" label="Category Name" variant="solo" rounded="lg"
+          prepend-inner-icon="mdi-tag-outline" class="mb-4" />
+
+        <v-divider class="my-4"></v-divider>
+
+        <div class="text-right">
+          <v-btn variant="text" @click="dialogCreateCategory = false">Cancel</v-btn>
+          <v-btn color="primary" rounded="lg" @click="saveNewCategory">Save</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
+
+    <!-- SUBCATEGORY CREATE DIALOG -->
+    <v-dialog v-model="dialogCreateSubcategory" max-width="420px">
+      <v-card class="pa-5 rounded-xl">
+        <div class="d-flex align-center mb-3">
+          <v-icon color="primary" size="28">mdi-shape-outline</v-icon>
+          <span class="text-h6 font-weight-bold ml-2">Create Subcategory</span>
+        </div>
+
+        <v-text-field v-model="newSubcategoryName" label="Subcategory Name" variant="solo" rounded="lg"
+          prepend-inner-icon="mdi-tag-multiple-outline" class="mb-4" />
+
+        <v-divider class="my-4"></v-divider>
+
+        <div class="text-right">
+          <v-btn variant="text" @click="dialogCreateSubcategory = false">Cancel</v-btn>
+          <v-btn color="primary" rounded="lg" @click="saveNewSubcategory">Save</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, watch, onMounted } from "vue"
 import { useProducts } from "@/composables/pos/useProducts"
 import { useCategories } from "@/composables/pos/useCategories"
 
 const COMPANY_ID = "LOCAL_COMPANY"
 
-const { listProducts, createProduct, updateProduct, deleteProduct } = useProducts()
+const { listProducts, createProduct, updateProduct, fetchCategories, createCategory, createSubCategory, createVariant, updateVariant, deleteProduct } = useProducts()
 const { getCategories } = useCategories()
 
 const products = ref<any[]>([])
 const categories = ref<any[]>([])
+const category = ref<any[]>([])
 const search = ref("")
 const selectedCategory = ref<number | null>(null)
+
+const categoryName = ref("");
+const parentCategory = ref(null);
+const subCategoryName = ref("");
 
 const productDialog = ref(false)
 const variantDialog = ref(false)
@@ -230,9 +268,20 @@ const variantFormRef = ref()
 const formValid = ref(false)
 const variantFormValid = ref(false)
 
+const dialogCreateCategory = ref(false);
+const dialogCreateSubcategory = ref(false);
+
+const newCategoryName = ref("");
+const newSubcategoryName = ref("");
+
+const subcategoriesFiltered = computed(() =>
+  category.value.filter(c => c.parent_id === form.value.category_id)
+);
+
 let currentProduct: any = null
 
 onMounted(async () => {
+  category.value = await fetchCategories(COMPANY_ID) || []
   categories.value = await getCategories({ company_id: COMPANY_ID, parent_id: null }) || []
   products.value = await listProducts({ company_id: COMPANY_ID }) || []
 })
@@ -251,7 +300,7 @@ const filteredProducts = computed(() =>
 
 const openAdd = () => {
   isEdit.value = false
-  form.value = { name: "", sku: "", price: 0, mrp: 0, category_id: null }
+  form.value = { name: "", sku: "", category_id: null }
   productDialog.value = true
 }
 
@@ -259,6 +308,56 @@ const openEdit = (p: any) => {
   isEdit.value = true
   form.value = { ...p }
   productDialog.value = true
+}
+
+function openCategoryDialog() {
+  newCategoryName.value = "";
+  dialogCreateCategory.value = true;
+}
+
+async function saveNewCategory() {
+  if (!newCategoryName.value.trim()) return;
+
+  const id = await createCategory({
+    name: newCategoryName.value,
+    company_id: COMPANY_ID,
+    parent_id: null
+  });
+
+  await refreshCategories();
+  form.value.category_id = id;
+
+  dialogCreateCategory.value = false;
+}
+
+function openSubcategoryDialog() {
+  newSubcategoryName.value = "";
+  dialogCreateSubcategory.value = true;
+}
+
+async function saveNewSubcategory() {
+  if (!newSubcategoryName.value.trim()) return;
+  if (!form.value.category_id) return;
+
+  const id = await createSubCategory({
+    name: newSubcategoryName.value,
+    company_id: COMPANY_ID,
+    parent_id: form.value.category_id
+  });
+
+  await refreshCategories();
+  form.value.sub_category_id = id;
+
+  dialogCreateSubcategory.value = false;
+}
+
+watch(() => form.value.category_id, () => {
+  form.value.sub_category_id = null;
+});
+
+async function refreshCategories() {
+  category.value = await fetchCategories(COMPANY_ID);
+  categories.value = await getCategories({ company_id: COMPANY_ID, parent_id: null }) || []
 }
 
 const submitProduct = async () => {
@@ -282,14 +381,41 @@ const openVariantDialog = (product: any, variant: any = null) => {
   variantDialog.value = true
 }
 
-const submitVariant = () => {
+const submitVariant = async () => {
+  const payload = {
+    ...variantForm.value,
+    company_id: COMPANY_ID,
+  };
+
   if (variantEdit.value) {
-    const i = currentProduct.items.findIndex((v: any) => v.id === variantForm.value.id)
-    if (i >= 0) currentProduct.items[i] = { ...variantForm.value }
+    // UPDATE VARIANT
+    await updateVariant(variantForm.value.id, payload);
   } else {
-    currentProduct.items.push({ ...variantForm.value, id: crypto.randomUUID() })
+    // CREATE NEW VARIANT
+    await createVariant(currentProduct.id, payload);
   }
-  variantDialog.value = false
+
+  variantDialog.value = false;
+
+  // Refresh product list
+  products.value = await listProducts({ company_id: COMPANY_ID });
+};
+
+// SAVE CATEGORY / SUBCATEGORY
+async function handleSave() {
+  if (!categoryName.value) {
+    alert("Enter category name");
+    return;
+  }
+
+  // 1️⃣ Create main category first
+  const mainCatId = await createCategory(categoryName.value);
+
+  // 2️⃣ If user selected parent → treat this as creating a subcategory
+  if (parentCategory.value && subCategoryName.value) {
+    await createSubCategory(parentCategory.value, subCategoryName.value);
+  }
+
 }
 </script>
 
@@ -347,6 +473,12 @@ const submitVariant = () => {
   padding: 0 16px 8px;
   font-size: 12px;
   color: #6b7280;
+}
+
+.select-btn-align .v-btn {
+  height: 56px !important;
+  width: 56px !important;
+  border-radius: 12px;
 }
 
 .fab-rich {

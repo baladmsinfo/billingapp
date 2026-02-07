@@ -158,6 +158,7 @@ onMounted(loadDashboard);
 /* ACTIONS */
 const onNewSale = () => router.push("/pos/system");
 const OnProduct = () => router.push("/pos/products");
+const OnCustomers = () => router.push("/pos/customers");
 const OnOrder = () => router.push("/pos/orders");
 const OnPayments = () => router.push("/pos/payments");
 const OnSettings = () => router.push("/pos/settings");
@@ -171,8 +172,8 @@ const statusColor = (s: string) => {
 const actions = [
   { title: "New Sale", icon: "mdi-plus", action: onNewSale },
   { title: "Products", icon: "mdi-package-variant", action: OnProduct },
-  { title: "Customers", icon: "mdi-account-group" },
-  { title: "Orders", icon: "mdi-chart-box", action: OnOrder },
+  { title: "Parties", icon: "mdi-account-group", action: OnCustomers },
+  { title: "Invoices", icon: "mdi-chart-box", action: OnOrder },
   { title: "Payments", icon: "mdi-qrcode-scan", action: OnPayments },
   { title: "Settings", icon: "mdi-cog", action: OnSettings },
 ];

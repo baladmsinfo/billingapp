@@ -42,12 +42,27 @@ export const parties = sqliteTable("parties", {
 });
 
 /*********************************
+ * TAX RATES
+ *********************************/
+export const tax_rates = sqliteTable("tax_rates", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // GST 5%, GST 12%, VAT 10%, etc.
+  percentage: real("percentage").notNull(), // 5, 12, 18 etc.
+  description: text("description"),
+  created_at: integer("created_at"),
+  updated_at: integer("updated_at"),
+});
+
+
+/*********************************
  * PARTY ADDRESSES
  *********************************/
 export const party_addresses = sqliteTable("party_addresses", {
   id: text("id").primaryKey(),
   party_id: text("party_id").notNull().references(() => parties.id, { onDelete: "cascade" }),
-  label: text("label"),
   address_line1: text("address_line1"),
   address_line2: text("address_line2"),
   address_line3: text("address_line3"),
@@ -82,8 +97,6 @@ export const products = sqliteTable("products", {
   name: text("name").notNull(),
   sku: text("sku"),
   description: text("description"),
-  price: real("price").default(0),
-  mrp: real("mrp"),
   category_id: text("category_id").references(() => categories.id, { onDelete: "set null" }),
   sub_category_id: text("sub_category_id").references(() => categories.id, { onDelete: "set null" }),
   company_id: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -102,8 +115,7 @@ export const items = sqliteTable("items", {
   price: real("price").default(0),
   mrp: real("mrp"),
   quantity: integer("quantity").default(0),
-  vendor_id: text("vendor_id").references(() => parties.id, { onDelete: "set null" }),
-  tax_rate_id: text("tax_rate_id"),
+  tax_rate_id: text("tax_rate_id").references(() => tax_rates.id, { onDelete: "set null" }),
   company_id: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   created_at: integer("created_at"),
   updated_at: integer("updated_at"),
@@ -132,7 +144,7 @@ export const cart_items = sqliteTable("cart_items", {
   product_id: text("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
   quantity: integer("quantity").default(1),
   price: real("price").default(0),
-  tax_rate_id: text("tax_rate_id"),
+  tax_rate_id: text("tax_rate_id").references(() => tax_rates.id, { onDelete: "set null" }),
   total: real("total").default(0),
   created_at: integer("created_at"),
   updated_at: integer("updated_at"),
@@ -169,7 +181,7 @@ export const invoice_items = sqliteTable("invoice_items", {
   quantity: integer("quantity").default(1),
   price: real("price").default(0),
   status: text("status").default("ORDERED"), // ORDERED | PROCESSING | SHIPPED | DELIVERED | CANCELLED | RETURNED
-  tax_rate_id: text("tax_rate_id"),
+  tax_rate_id: text("tax_rate_id").references(() => tax_rates.id, { onDelete: "set null" }),
   total: real("total").default(0),
   paid_amount: real("paid_amount").default(0),
   created_at: integer("created_at"),

@@ -1,5 +1,6 @@
 import { useDb } from "@/db/client"
-import { invoice_items, categories } from "@/db/schema"
+import { invoice_items, invoices,
+  products, categories } from "@/db/schema"
 import { and, eq, gte, lte } from "drizzle-orm"
 import { getDateRange } from "@/utils/dateRange"
 
@@ -21,13 +22,12 @@ export function useExpense(companyId: string) {
         total: invoice_items.total,
       })
       .from(invoice_items)
-      .leftJoin(
-        categories,
-        eq(invoice_items.category_id, categories.id)
-      )
+      .leftJoin(invoices, eq(invoice_items.invoice_id, invoices.id))          // join invoices
+      .leftJoin(products, eq(invoice_items.product_id, products.id))          // join products
+      .leftJoin(categories, eq(products.category_id, categories.id))          // join categories
       .where(
         and(
-          eq(invoice_items.company_id, companyId),
+          eq(invoices.company_id, companyId), // FIX — correct company filter
           eq(invoice_items.status, "ORDERED"),
           gte(invoice_items.created_at, start),
           lte(invoice_items.created_at, end)

@@ -109,6 +109,22 @@ export async function migrate(reset: boolean = false): Promise<void> {
     `);
 
     // =================================================
+    // 💸 TAX RATES
+    // =================================================
+    db.exec(`
+  CREATE TABLE IF NOT EXISTS tax_rates (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    percentage REAL NOT NULL,
+    description TEXT,
+    created_at INTEGER,
+    updated_at INTEGER,
+    FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
+  );
+`);
+
+    // =================================================
     // 📦 PRODUCTS
     // =================================================
     db.exec(`
@@ -135,22 +151,21 @@ export async function migrate(reset: boolean = false): Promise<void> {
     // =================================================
     db.exec(`
       CREATE TABLE IF NOT EXISTS items (
-        id TEXT PRIMARY KEY,
-        product_id TEXT NOT NULL,
-        sku TEXT,
-        variant TEXT,
-        price REAL DEFAULT 0,
-        mrp REAL,
-        quantity INTEGER DEFAULT 0,
-        vendor_id TEXT,
-        tax_rate_id TEXT,
-        company_id TEXT NOT NULL,
-        created_at INTEGER,
-        updated_at INTEGER,
-        FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE,
-        FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE,
-        FOREIGN KEY(vendor_id) REFERENCES parties(id) ON DELETE SET NULL
-      );
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      sku TEXT,
+      variant TEXT,
+      price REAL DEFAULT 0,
+      mrp REAL,
+      quantity INTEGER DEFAULT 0,
+      tax_rate_id TEXT,
+      company_id TEXT NOT NULL,
+      created_at INTEGER,
+      updated_at INTEGER,
+      FOREIGN KEY(tax_rate_id) REFERENCES tax_rates(id) ON DELETE SET NULL,
+      FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE,
+      FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
+    );
     `);
 
     // =================================================
@@ -186,6 +201,7 @@ export async function migrate(reset: boolean = false): Promise<void> {
         total REAL DEFAULT 0,
         created_at INTEGER,
         updated_at INTEGER,
+        FOREIGN KEY(tax_rate_id) REFERENCES tax_rates(id) ON DELETE SET NULL,
         FOREIGN KEY(cart_id) REFERENCES carts(id) ON DELETE CASCADE,
         FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE,
         FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
@@ -235,6 +251,7 @@ export async function migrate(reset: boolean = false): Promise<void> {
         paid_amount REAL DEFAULT 0,
         created_at INTEGER,
         updated_at INTEGER,
+        FOREIGN KEY(tax_rate_id) REFERENCES tax_rates(id) ON DELETE SET NULL,
         FOREIGN KEY(invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
         FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE,
         FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
@@ -293,6 +310,7 @@ export async function migrate(reset: boolean = false): Promise<void> {
       "party_addresses",
       "categories",
       "products",
+      "tax_rates",
       "items",
       "carts",
       "cart_items",

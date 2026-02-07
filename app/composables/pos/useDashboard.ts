@@ -243,6 +243,117 @@ export function useDashboard() {
     loading.value = false;
   };
 
+  const getCashflow = async (period: string) => {
+    const { db } = await useDb();
+    const companyId = DEFAULT_COMPANY_ID;
+
+    const rows =
+      db.exec(
+        `
+      SELECT date(created_at, 'unixepoch') AS day,
+             SUM(CASE WHEN type IN ('SALE','POS') THEN total_amount ELSE 0 END) AS inflow,
+             SUM(CASE WHEN type IN ('EXPENSE','PURCHASE') THEN total_amount ELSE 0 END) AS outflow
+      FROM invoices
+      WHERE company_id = ?
+      GROUP BY day
+      ORDER BY day
+    `,
+        [companyId]
+      )[0]?.values ?? [];
+
+    return {
+      labels: rows.map((r) => r[0]),
+      inflow: rows.map((r) => r[1]),
+      outflow: rows.map((r) => r[2]),
+    };
+  };
+
+  const getSalesSummary = async (period: string) => {
+    const { db } = await useDb();
+    const companyId = DEFAULT_COMPANY_ID;
+
+    const paid =
+      db.exec(
+        `
+      SELECT COALESCE(SUM(total_amount),0)
+      FROM invoices
+      WHERE company_id = ?
+      AND type IN ('SALE','POS')
+      AND status='PAID'
+    `,
+        [companyId]
+      )[0]?.values?.[0]?.[0] ?? 0;
+
+    const unpaid =
+      db.exec(
+        `
+      SELECT COALESCE(SUM(total_amount),0)
+      FROM invoices
+      WHERE company_id = ?
+      AND type IN ('SALE','POS')
+      AND status IN ('PENDING','PARTIAL','PAYLATER')
+    `,
+        [companyId]
+      )[0]?.values?.[0]?.[0] ?? 0;
+
+    return { paid, unpaid };
+  };
+
+  const getPurchaseSummary = async (period: string) => {
+    const { db } = await useDb();
+    const companyId = DEFAULT_COMPANY_ID;
+
+    const paid =
+      db.exec(
+        `
+      SELECT COALESCE(SUM(total_amount),0)
+      FROM invoices
+      WHERE company_id = ?
+      AND type = 'PURCHASE'
+      AND status='PAID'
+    `,
+        [companyId]
+      )[0]?.values?.[0]?.[0] ?? 0;
+
+    const unpaid =
+      db.exec(
+        `
+      SELECT COALESCE(SUM(total_amount),0)
+      FROM invoices
+      WHERE company_id = ?
+      AND type = 'PURCHASE'
+      AND status IN ('PENDING','PARTIAL','PAYLATER')
+    `,
+        [companyId]
+      )[0]?.values?.[0]?.[0] ?? 0;
+
+    return { paid, unpaid };
+  };
+
+  const getProfitLoss = async (period: string) => {
+    const { db } = await useDb();
+    const companyId = DEFAULT_COMPANY_ID;
+
+    const rows =
+      db.exec(
+        `
+      SELECT date(created_at, 'unixepoch') AS day,
+             SUM(CASE WHEN type IN ('SALE','POS') THEN total_amount ELSE 0 END)
+           - SUM(CASE WHEN type IN ('PURCHASE','EXPENSE') THEN total_amount ELSE 0 END)
+      FROM invoices
+      WHERE company_id = ?
+      GROUP BY day
+      ORDER BY day
+    `,
+        [companyId]
+      )[0]?.values ?? [];
+
+    return {
+      labels: rows.map((r) => r[0]),
+      values: rows.map((r) => r[1]),
+    };
+  };
+
   return {
     stats,
     transactions,
@@ -254,5 +365,9 @@ export function useDashboard() {
     hourlySales,
     loading,
     loadDashboard,
+    getCashflow,
+    getSalesSummary,
+    getPurchaseSummary,
+    getProfitLoss,
   };
 }

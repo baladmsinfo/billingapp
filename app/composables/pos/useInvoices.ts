@@ -1,6 +1,16 @@
 import { eq, desc, asc, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import { invoices, invoice_items, carts, cart_items, products  } from "@/db/schema";
+import {
+  invoices,
+  invoice_items,
+  carts,
+  parties,
+  cart_items,
+  tax_rates,
+  products,
+  items
+} from "@/db/schema";
+
 import { useDb } from "@/db/client.js";
 import { enqueueSync } from "@/composables/pos/useSyncQueue";
 
@@ -13,65 +23,134 @@ export function useInvoice() {
     return { drizzleDb, persistDb };
   };
 
+  /* ================= FETCH PARTIES ================= */
+  const getPartiesByType = async (company_id: string, type: "CUSTOMER" | "VENDOR") => {
+    const { drizzleDb } = await dbReady();
+
+    return await drizzleDb
+      .select()
+      .from(parties)
+      .where(
+        sql`${parties.company_id} = ${company_id} AND (${parties.type} = ${type} OR ${parties.type} = 'BOTH')`
+      );
+  };
+
+  const getAllProducts = async (company_id: string) => {
+    const { drizzleDb } = await dbReady();
+
+    const rows = await drizzleDb
+      .select({
+        product_id: products.id,
+        product_name: products.name,
+        item_id: items.id,
+        sku: items.sku,
+        variant: items.variant,
+        price: items.price,
+        quantity: items.quantity
+      })
+      .from(products)
+      .leftJoin(items, eq(items.product_id, products.id))
+      .where(eq(products.company_id, company_id));
+
+    // Group items under each product
+    const map = new Map();
+
+    for (const r of rows) {
+      if (!map.has(r.product_id)) {
+        map.set(r.product_id, {
+          product_id: r.product_id,
+          product_name: r.product_name,
+          items: []
+        });
+      }
+
+      if (r.item_id) {
+        map.get(r.product_id).items.push({
+          item_id: r.item_id,
+          sku: r.sku,
+          variant: r.variant,
+          price: r.price,
+          quantity: r.quantity
+        });
+      }
+    }
+
+    return Array.from(map.values());
+  };
+
+  const getAllTaxRates = async (company_id: string) => {
+    const { drizzleDb } = await dbReady();
+
+    const rows = await drizzleDb
+      .select()
+      .from(tax_rates)
+      .where(eq(tax_rates.company_id, company_id))
+      .orderBy(asc(tax_rates.percentage));
+
+    return rows.map(r => ({
+      id: r.id,
+      name: `${r.name} (${r.percentage}%)`,
+      percent: r.percentage
+    }));
+  };
+
   /* ================= INVOICE ================= */
   const createInvoice = async (data: {
     company_id: string;
-    customer_id?: string;
-    cart_id?: string;
+    party_id: string;
+    type: "SALE" | "POS" | "PURCHASE" | "RETURN" | "EXPENSE" | "OTHER";
+    items: Array<{
+      product_id: string;
+      item_id: string;
+      quantity: number;
+      price: number;
+    }>;
     total_amount: number;
     tax_amount?: number;
     discount_amount?: number;
     due_date?: number;
   }) => {
+
     const { drizzleDb, persistDb } = await dbReady();
-    const id = uuidv4();
+
+    const invoice_id = uuidv4();
     const invoice_number = `INV-${Date.now()}`;
 
+    // 1️⃣ Create invoice
     await drizzleDb.insert(invoices).values({
-      id,
+      id: invoice_id,
       invoice_number,
+      company_id: data.company_id,
+      type: data.type,
+      party_id: data.party_id,
+      total_amount: data.total_amount,
+      tax_amount: data.tax_amount ?? 0,
+      due_date: data.due_date ?? null,
       status: "PENDING",
       date: now(),
       created_at: now(),
       updated_at: now(),
-      ...data,
     });
 
-    await enqueueSync({
-      entity: "invoices",
-      entity_id: id,
-      action: "CREATE",
-      payload: { ...data, invoice_number },
-    });
+    // 2️⃣ Insert invoice items
+    for (const item of data.items) {
+      await drizzleDb.insert(invoice_items).values({
+        id: uuidv4(),
+        invoice_id,
+        product_id: item.product_id,
+        item_id: item.item_id,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.quantity * item.price,
+        paid_amount: 0,
+        status: "ORDERED",
+        created_at: now(),
+        updated_at: now(),
+      });
+    }
 
     await persistDb();
-    return id;
-  };
-
-  const addInvoiceItem = async (data: {
-    invoice_id: string;
-    product_id: string;
-    item_id: string;
-    quantity: number;
-    price: number;
-  }) => {
-    const { drizzleDb, persistDb } = await dbReady();
-
-    await drizzleDb.insert(invoice_items).values({
-      id: uuidv4(),
-      invoice_id: data.invoice_id,
-      product_id: data.product_id,
-      item_id: data.item_id,
-      quantity: data.quantity,
-      price: data.price,
-      total: data.quantity * data.price,
-      paid_amount: 0,
-      status: "ORDERED",
-      created_at: now(),
-      updated_at: now(),
-    });
-
-    await persistDb();
+    return invoice_id;
   };
 
   /* ================= CART → INVOICE ================= */
@@ -213,54 +292,81 @@ export function useInvoice() {
   /**
    * Server-side paginated & sortable invoices
    */
-  const getCompanyInvoicesServer = async (params: {
+  const getCompanyInvoicesServer = async (opts: {
     company_id: string;
-    page: number;
-    limit: number;
-    sortBy?: "date" | "total_amount" | "status" | "invoice_number" | "type";
+    page?: number;        // zero-based
+    limit?: number;
+    sortBy?: string;
     sortOrder?: "asc" | "desc";
+    status?: string | null;
+    type?: string | null;
+    search?: string | null;
+    dateStart?: number | null;
+    dateEnd?: number | null;
   }) => {
     const { drizzleDb } = await dbReady();
-    const {
-      company_id,
-      page = 0,
-      limit = 10,
-      sortBy = "date",
-      sortOrder = "desc",
-    } = params;
 
-    const offset = Number(page) * Number(limit);
+    const page = opts.page ?? 0;
+    const limit = opts.limit ?? 20;
+    const offset = page * limit;
 
-    // Determine column
-    let column: any = invoices.date; // default
-    if (sortBy === "total_amount") column = invoices.total_amount;
-    else if (sortBy === "status") column = invoices.status;
-    else if (sortBy === "invoice_number") column = invoices.invoice_number;
-    else if (sortBy === "type") column = invoices.type;
+    const sortField = invoices[opts.sortBy ?? "date"] ?? invoices.date;
+    const sortDirection = opts.sortOrder === "asc" ? asc : desc;
 
-    try {
-      const rows = await drizzleDb
-        .select()
-        .from(invoices)
-        .where(eq(invoices.company_id, String(company_id)))
-        .orderBy(sortOrder === "asc" ? asc(column) : desc(column))
-        .limit(Number(limit))
-        .offset(Number(offset));
+    // --------------------------
+    // BUILD FILTER CONDITIONS
+    // --------------------------
+    const whereConditions = [
+      eq(invoices.company_id, opts.company_id)
+    ];
 
-      return Array.isArray(rows) ? rows : [];
-    } catch (err) {
-      console.error("Drizzle query error:", err);
-      return [];
+    // STATUS FILTER
+    if (opts.status) {
+      whereConditions.push(eq(invoices.status, opts.status));
     }
+
+    // TYPE FILTER
+    if (opts.type) {
+      whereConditions.push(eq(invoices.type, opts.type));
+    }
+
+    // SEARCH FILTER
+    if (opts.search) {
+      whereConditions.push(
+        sql`LOWER(${invoices.invoice_number}) LIKE LOWER('%' || ${opts.search} || '%')`
+      );
+    }
+
+    // DATE RANGE
+    if (opts.dateStart && opts.dateEnd) {
+      whereConditions.push(
+        sql`${invoices.date} BETWEEN ${opts.dateStart} AND ${opts.dateEnd}`
+      );
+    }
+
+    // --------------------------
+    // MAIN QUERY
+    // --------------------------
+    const rows = await drizzleDb
+      .select()
+      .from(invoices)
+      .where(sql`${sql.join(whereConditions, sql` AND `)}`)
+      .orderBy(sortDirection(sortField))
+      .limit(limit)
+      .offset(offset);
+
+    return rows;
   };
 
   return {
     createInvoice,
-    addInvoiceItem,
     generateInvoiceFromCart,
     markInvoicePaid,
     cancelInvoice,
     getInvoiceById,
+    getAllTaxRates,
     getCompanyInvoicesServer,
+    getPartiesByType,
+    getAllProducts,
   };
 }

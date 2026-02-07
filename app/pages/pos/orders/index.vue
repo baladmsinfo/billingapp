@@ -9,17 +9,19 @@
       :itemsPerPage="itemsPerPage"
       :sortBy="sortBy"
       :sortDesc="sortDesc"
-      @update="fetchInvoices"
+      @update="handleWebUpdate"
       @rowClick="onRowClick"
+      @filterChanged="applyFilters"
     />
 
-    <!-- Mobile Orders: Infinite scroll / load more -->
+    <!-- Mobile Orders -->
     <Mobile-Orders
       v-else
       :invoices="invoices"
       :loading="loading"
       :hasMore="hasMore"
       @loadMore="loadMoreInvoices"
+      @filterChanged="applyFilters"
     />
   </div>
 </template>
@@ -38,38 +40,54 @@ definePageMeta({
 
 const device = useDevice();
 const router = useRouter();
-
 const { getCompanyInvoicesServer } = useInvoice();
 
-// -------- State --------
+/* ------------------------------
+   GLOBAL STATE
+------------------------------ */
 const invoices = ref<any[]>([]);
 const loading = ref(false);
 const hasMore = ref(true);
 
-const page = ref(1);               // current page (1-based)
-const itemsPerPage = ref(5);      // rows per page
-const sortBy = ref("date");        // default sort field
-const sortDesc = ref(true);        // default sort order
+const page = ref(1);               // 1-based UI page
+const itemsPerPage = ref(5);
+const sortBy = ref("date");
+const sortDesc = ref(true);
 
-// -------- Functions --------
+/* ------------------------------
+   FILTERS (Shared with Mobile)
+------------------------------ */
+const filterStatus = ref<string | null>(null);
+const filterType = ref<string | null>(null);
+const filterSearch = ref<string>("");
+const filterDate = ref<{ start?: string; end?: string }>({});
 
-// Fetch invoices for web table (server-side sorting + pagination)
-const fetchInvoices = async (opts?: { page?: number, itemsPerPage?: number, sortBy?: string, sortDesc?: boolean }) => {
+/* ------------------------------
+   MAIN FETCH (SERVER FILTERING)
+------------------------------ */
+const fetchInvoices = async (opts?: any) => {
   loading.value = true;
 
   try {
     const rows = await getCompanyInvoicesServer({
       company_id: String(DEFAULT_COMPANY_ID),
-      page: Number(opts?.page ?? page.value) - 1,         // 0-based
-      limit: Number(opts?.itemsPerPage ?? itemsPerPage.value),
-      sortBy: String(opts?.sortBy ?? sortBy.value),
-      sortOrder: (opts?.sortDesc ?? sortDesc.value) ? "desc" : "asc",
+      page: (opts?.page ?? page.value) - 1, // convert to 0-based
+      limit: opts?.itemsPerPage ?? itemsPerPage.value,
+      sortBy: "date",
+      sortOrder: "desc",
+
+      // Filters
+      status: filterStatus.value || null,
+      type: filterType.value || null,
+      search: filterSearch.value.trim() || null,
+
+      dateStart: filterDate.value.start ? new Date(filterDate.value.start).getTime() : null,
+      dateEnd: filterDate.value.end ? new Date(filterDate.value.end).getTime() : null,
     });
 
-    invoices.value = Array.isArray(rows) ? rows : [];
+    invoices.value = rows;
     hasMore.value = rows.length === itemsPerPage.value;
   } catch (err) {
-    console.error("Failed to fetch invoices:", err);
     invoices.value = [];
     hasMore.value = false;
   } finally {
@@ -77,43 +95,73 @@ const fetchInvoices = async (opts?: { page?: number, itemsPerPage?: number, sort
   }
 };
 
-// Load next page (mobile)
+/* ------------------------------
+   MOBILE LOAD MORE
+------------------------------ */
 const loadMoreInvoices = async () => {
   if (loading.value || !hasMore.value) return;
   loading.value = true;
 
   try {
     const rows = await getCompanyInvoicesServer({
-      company_id: String(DEFAULT_COMPANY_ID),
+      company_id: DEFAULT_COMPANY_ID,
       page: page.value,
       limit: itemsPerPage.value,
-      sortBy: sortBy.value,
-      sortOrder: sortDesc.value ? "desc" : "asc",
+      sortBy: "date",
+      sortOrder: "desc",
+
+      status: filterStatus.value || null,
+      type: filterType.value || null,
+      search: filterSearch.value.trim() || null,
+
+      dateStart: filterDate.value.start ? new Date(filterDate.value.start).getTime() : null,
+      dateEnd: filterDate.value.end ? new Date(filterDate.value.end).getTime() : null,
     });
 
-    if (Array.isArray(rows)) {
-      invoices.value.push(...rows);
-      if (rows.length < itemsPerPage.value) hasMore.value = false;
-      page.value += 1;
-    } else {
-      hasMore.value = false;
-    }
-  } catch (err) {
-    console.error("Failed to load more invoices:", err);
-    hasMore.value = false;
+    invoices.value.push(...rows);
+
+    if (rows.length < itemsPerPage.value) hasMore.value = false;
+    page.value++;
   } finally {
     loading.value = false;
   }
 };
 
-// Row click → navigate to invoice details
+/* ------------------------------
+   DESKTOP TABLE UPDATE
+------------------------------ */
+const handleWebUpdate = (opts: any) => {
+  page.value = opts.page;
+  itemsPerPage.value = opts.itemsPerPage;
+  sortBy.value = opts.sortBy;
+  sortDesc.value = opts.sortDesc;
+
+  fetchInvoices(opts);
+};
+
+/* ------------------------------
+   APPLY FILTERS (Both UIs)
+------------------------------ */
+const applyFilters = (filters: any) => {
+  filterStatus.value = filters.status ?? null;
+  filterType.value = filters.type ?? null;
+  filterSearch.value = filters.search ?? "";
+  filterDate.value = filters.date ?? {};
+
+  // reset pagination
+  page.value = 1;
+  hasMore.value = true;
+
+  fetchInvoices();
+};
+
+/* ------------------------------
+   ROW CLICK → DETAILS PAGE
+------------------------------ */
 const onRowClick = (invoice: any) => {
   if (!invoice?.id) return;
   router.push(`/pos/orders/${invoice.id}`);
 };
 
-// Load first page on mount
-onMounted(() => {
-  fetchInvoices();
-});
+onMounted(() => fetchInvoices());
 </script>

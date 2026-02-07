@@ -10,20 +10,28 @@
         :sort-by="[sortBy]"
         :sort-desc="[sortDesc]"
         item-key="id"
-        show-select="false"
+        hover
+        density="comfortable"
         @update:page="onPage"
         @update:items-per-page="onItemsPerPage"
         @update:sort-by="onSort"
         @click:row="onRow"
       >
+        <!-- STATUS -->
         <template #item.status="{ item }">
-          <v-chip size="small" :color="statusColor(item.status)">
+          <v-chip size="small" :color="statusColor(item.status)" label>
             {{ item.status }}
           </v-chip>
         </template>
 
+        <!-- AMOUNT -->
         <template #item.total_amount="{ item }">
           ₹{{ Number(item.total_amount).toFixed(2) }}
+        </template>
+
+        <!-- DATE -->
+        <template #item.date="{ item }">
+          {{ new Date(item.date).toLocaleDateString() }}
         </template>
       </v-data-table>
     </v-card>
@@ -31,53 +39,99 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
-  items: any[]
-  loading: boolean
-  page: number
-  itemsPerPage: number
-  sortBy: string
-  sortDesc: boolean
-}>()
+import { watch } from "vue";
 
-const emit = defineEmits(["update", "rowClick"])
+/* -----------------------------------
+   PROPS
+----------------------------------- */
+const props = defineProps({
+  items: Array,
+  loading: Boolean,
+  page: Number,
+  itemsPerPage: Number,
+  sortBy: String,
+  sortDesc: Boolean,
 
+  // FILTERS coming from parent
+  filterStatus: String,
+  filterType: String,
+  filterSearch: String,
+  filterDate: Object,
+});
+
+/* -----------------------------------
+   EMITS
+----------------------------------- */
+const emit = defineEmits(["update", "rowClick", "filterChanged"]);
+
+/* -----------------------------------
+   HEADERS
+----------------------------------- */
 const headers = [
   { title: "Invoice #", key: "invoice_number" },
   { title: "Date", key: "date" },
   { title: "Type", key: "type" },
   { title: "Status", key: "status" },
   { title: "Amount", key: "total_amount", align: "end" },
-]
+];
 
-const onPage = (p: number) => {
-  props.page = p
-  emit("update")
-}
+/* -----------------------------------
+   WATCH FILTERS (Trigger Server Reload)
+----------------------------------- */
+watch(
+  () => [
+    props.filterStatus,
+    props.filterType,
+    props.filterSearch,
+    props.filterDate,
+  ],
+  () => {
+    emit("filterChanged", {
+      status: props.filterStatus,
+      type: props.filterType,
+      search: props.filterSearch,
+      date: props.filterDate,
+    });
+  }
+);
+
+/* -----------------------------------
+   DATA-TABLE EVENTS 
+----------------------------------- */
+const onPage = (newPage: number) => {
+  emit("update", { page: newPage });
+};
 
 const onItemsPerPage = (n: number) => {
-  props.itemsPerPage = n
-  emit("update")
-}
+  emit("update", { itemsPerPage: n });
+};
 
 const onSort = (sort: any[]) => {
-  if (sort.length) {
-    props.sortBy = sort[0].key
-    props.sortDesc = sort[0].order === "desc"
-    emit("update")
-  }
-}
+  if (!sort.length) return;
 
-const onRow = (_: any, row: any) => {
-  emit("rowClick", row.item)
-}
+  emit("update", {
+    sortBy: sort[0].key,
+    sortDesc: sort[0].order === "desc",
+  });
+};
 
+const onRow = (_event: any, row: any) => {
+  emit("rowClick", row.item);
+};
+
+/* -----------------------------------
+   UI HELPERS
+----------------------------------- */
 const statusColor = (s: string) => {
   switch (s) {
-    case "PAID": return "green"
-    case "PARTIAL": return "orange"
-    case "CANCELLED": return "red"
-    default: return "grey"
+    case "PAID":
+      return "green";
+    case "PARTIAL":
+      return "orange";
+    case "CANCELLED":
+      return "red";
+    default:
+      return "grey";
   }
-}
+};
 </script>
