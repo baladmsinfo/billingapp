@@ -19,6 +19,18 @@ export function useDbModels() {
     return { drizzleDb, persistDb };
   };
 
+  /* ---------------- GENERIC UPSERT ---------------- */
+  const upsert = async (db, table, id, data) => {
+    const existing = await db.select().from(table).where(eq(table.id, id)).limit(1);
+
+    if (existing.length === 0) {
+      await db.insert(table).values(data);
+    } else {
+      delete data.created_at;
+      await db.update(table).set(data).where(eq(table.id, id));
+    }
+  };
+
   /* ---------------- SYNC QUEUE ---------------- */
   const enqueueSync = async ({ entity, entity_id, action, payload }) => {
     const { drizzleDb } = await dbReady();
@@ -35,6 +47,207 @@ export function useDbModels() {
       updated_at: now(),
     });
   };
+
+  /* ---------------- GENERIC LOCAL SYNC HANDLER ---------------- */
+  const localSyncHandler = async (endpoint, payload) => {
+    switch (endpoint) {
+      case "company-sync":
+        return await syncCompany(payload);
+
+      case "branch-sync":
+        return await syncBranch(payload);
+
+      case "products-sync":
+        return await syncProducts(payload);
+
+      case "tax-sync":
+        return await syncTaxRates(payload);
+
+      case "parties-sync":
+        return await syncParties(payload);
+
+      case "invoices-sync":
+        return await syncInvoices(payload);
+
+      case "payments-sync":
+        return await syncPayments(payload);
+
+      default:
+        console.warn("Unknown sync endpoint:", endpoint);
+    }
+  };
+
+  const syncCompany = async (data) => {
+    const { drizzleDb, persistDb } = await dbReady();
+    const nowTs = Date.now();
+    const c = data.company;
+
+    const localCompany = {
+      id: "LOCAL_COMPANY",                // 🔥 Always LOCAL
+      cloud_company_id: c.id,            // Store cloud UUID
+
+      name: c.name || null,
+      email: c.email || null,
+      phone: c.phone || null,
+      address: c.address || null,
+
+      currency_code: c.currency?.code || null,
+      currency_symbol: c.currency?.symbol || null,
+
+      // required local fields
+      license_key: "",
+      license_token: "",
+      license_expiry: null,
+      grace_until: null,
+
+      pin_hash: "",                      // always non-null
+      pin_attempts: 0,
+      pin_locked_until: null,
+      device_id: "",
+
+      created_at: c.created_at ?? nowTs,
+      updated_at: nowTs,
+    };
+
+    await upsert(drizzleDb, companies, "LOCAL_COMPANY", localCompany);
+
+    await persistDb();
+  };
+  
+  const syncBranch = async (data) => {
+    const { drizzleDb, persistDb } = await dbReady();
+
+    const nowTs = Date.now();
+    const b = data.branch;
+
+    await upsert(drizzleDb, branches, b.id, {
+      ...b,
+      updated_at: nowTs,
+      created_at: b.created_at ?? nowTs,
+    });
+
+    await persistDb();
+  };
+
+  const syncProducts = async (data) => {
+    const { drizzleDb, persistDb } = await dbReady();
+    const nowTs = Date.now();
+
+    // categories
+    for (const c of data.categories || []) {
+      await upsert(drizzleDb, categories, c.id, {
+        ...c,
+        updated_at: nowTs,
+        created_at: c.created_at ?? nowTs,
+      });
+    }
+
+    // products + items inside it
+    for (const p of data.products || []) {
+      await upsert(drizzleDb, products, p.id, {
+        ...p,
+        updated_at: nowTs,
+        created_at: p.created_at ?? nowTs,
+      });
+
+      for (const item of p.items || []) {
+        await upsert(drizzleDb, items, item.id, {
+          ...item,
+          updated_at: nowTs,
+          created_at: item.created_at ?? nowTs,
+        });
+      }
+    }
+
+    // branch items
+    for (const bi of data.branchItems || []) {
+      await upsert(drizzleDb, branch_items, bi.id, {
+        ...bi,
+        updated_at: nowTs,
+        created_at: bi.created_at ?? nowTs,
+      });
+    }
+
+    await persistDb();
+  };
+
+  const syncTaxRates = async (data) => {
+    const { drizzleDb, persistDb } = await dbReady();
+    const nowTs = Date.now();
+
+    for (const t of data.tax_rates || []) {
+      await upsert(drizzleDb, tax_rates, t.id, {
+        ...t,
+        updated_at: nowTs,
+        created_at: t.created_at ?? nowTs,
+      });
+    }
+
+    await persistDb();
+  };
+
+  const syncParties = async (data) => {
+    const { drizzleDb, persistDb } = await dbReady();
+    const nowTs = Date.now();
+
+    for (const p of data.parties || []) {
+      await upsert(drizzleDb, parties, p.id, {
+        ...p,
+        updated_at: nowTs,
+        created_at: p.created_at ?? nowTs,
+      });
+
+      for (const addr of p.addresses || []) {
+        await upsert(drizzleDb, party_addresses, addr.id, {
+          ...addr,
+          updated_at: nowTs,
+          created_at: addr.created_at ?? nowTs,
+        });
+      }
+    }
+
+    await persistDb();
+  };
+
+  const syncInvoices = async (data) => {
+    const { drizzleDb, persistDb } = await dbReady();
+    const nowTs = Date.now();
+
+    for (const inv of data.invoices || []) {
+      await upsert(drizzleDb, invoices, inv.id, {
+        ...inv,
+        updated_at: nowTs,
+        created_at: inv.created_at ?? nowTs,
+      });
+
+      for (const ii of inv.items || []) {
+        await upsert(drizzleDb, invoice_items, ii.id, {
+          ...ii,
+          updated_at: nowTs,
+          created_at: ii.created_at ?? nowTs,
+        });
+      }
+    }
+
+    await persistDb();
+  };
+
+  const syncPayments = async (data) => {
+    const { drizzleDb, persistDb } = await dbReady();
+    const nowTs = Date.now();
+
+    for (const p of data.payments || []) {
+      await upsert(drizzleDb, payments, p.id, {
+        ...p,
+        updated_at: nowTs,
+        created_at: p.created_at ?? nowTs,
+      });
+    }
+
+    await persistDb();
+  };
+
+
 
   const validateCompanyLogin = async ({ email, password }) => {
     const { drizzleDb, persistDb } = await dbReady();
@@ -56,6 +269,24 @@ export function useDbModels() {
       let loginSession;
 
       if (res.data?.statusCode === "00") {
+        const endpoints = [
+          "company-sync",
+          "branch-sync",
+          "products-sync",
+          "tax-sync",
+          "parties-sync",
+          "invoices-sync",
+          "payments-sync"
+        ];
+
+        for (const ep of endpoints) {
+          const res = await $axios.get(`${config.public.API_ENDPOINT}/api/offline/${ep}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          await localSyncHandler(ep, res.data);
+        }
+
         if (user.role === "ADMIN") {
           loginSession = useCookie("login_session", { maxAge: 86400 });
           loginSession.value = {
