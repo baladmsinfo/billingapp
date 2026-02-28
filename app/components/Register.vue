@@ -92,12 +92,12 @@ definePageMeta({
     auth: false,
 });
 
-import { ref, reactive } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useDbModels } from "@/composables/useDbModels.js";
 
 const router = useRouter();
-const { registerCompanyOffline } = useDbModels();
+const { registerCompanyOffline, getCurrencies } = useDbModels();
 
 const loading = ref(false);
 const error = ref("");
@@ -110,7 +110,20 @@ const companyTypes = [
     "Public Limited",
 ];
 
-const currencyList = ["INR", "USD", "EUR", "GBP", "AUD"];
+const currencyList = ref([]);
+
+onMounted(async () => {
+    try {
+        const list = await getCurrencies();
+
+        currencyList.value = list.map(c => ({
+            title: `${c.code} - ${c.name}`,
+            value: c.id,
+        }));
+    } catch (err) {
+        console.error("Failed to load currencies:", err);
+    }
+});
 
 const form = reactive({
     name: "",

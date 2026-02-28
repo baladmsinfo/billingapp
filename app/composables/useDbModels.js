@@ -135,6 +135,24 @@ export function useDbModels() {
     }
   };
 
+  const getCurrencies = async () => {
+    const { $axios } = useNuxtApp();
+    const config = useRuntimeConfig();
+
+    try {
+      const res = await $axios.get(`${config.public.API_ENDPOINT}/api/users/currencies`);
+
+      if (res.statusCode !== 200) {
+        throw new Error(res.message || "Failed to fetch currencies");
+      }
+
+      return res.data; // array of currencies
+    } catch (err) {
+      console.error("Currency fetch error:", err);
+      throw err;
+    }
+  };
+
   /* ===========================================
      REGISTER COMPANY (Cloud → Local Sync)
   =========================================== */
@@ -235,6 +253,7 @@ export function useDbModels() {
     // createCompany,
     // validateCompanyPin,
     registerCompanyOffline,
-    validateCompanyLogin
+    validateCompanyLogin,
+    getCurrencies,
   };
 }
