@@ -269,23 +269,23 @@ export function useDbModels() {
       let loginSession;
 
       if (res.data?.statusCode === "00") {
-        const endpoints = [
-          "company-sync",
-          "branch-sync",
-          "products-sync",
-          "tax-sync",
-          "parties-sync",
-          "invoices-sync",
-          "payments-sync"
-        ];
+        // const endpoints = [
+        //   "company-sync",
+        //   "branch-sync",
+        //   "products-sync",
+        //   "tax-sync",
+        //   "parties-sync",
+        //   "invoices-sync",
+        //   "payments-sync"
+        // ];
 
-        for (const ep of endpoints) {
-          const res = await $axios.get(`${config.public.API_ENDPOINT}/api/offline/${ep}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+        // for (const ep of endpoints) {
+        //   const res = await $axios.get(`${config.public.API_ENDPOINT}/api/offline/${ep}`, {
+        //     headers: { Authorization: `Bearer ${token}` }
+        //   });
 
-          await localSyncHandler(ep, res.data);
-        }
+        //   await localSyncHandler(ep, res.data);
+        // }
 
         if (user.role === "ADMIN") {
           loginSession = useCookie("login_session", { maxAge: 86400 });
@@ -372,15 +372,17 @@ export function useDbModels() {
 
     try {
       const res = await $axios.get(`${config.public.API_ENDPOINT}/api/users/currencies`);
+      console.log("res",res)
+      const response =res.data
 
-      if (res.statusCode !== 200) {
-        throw new Error(res.message || "Failed to fetch currencies");
-      }
-
-      return res.data; // array of currencies
+      
+      
+      return response.data; // array of currencies
     } catch (err) {
+      console.log("err",err)
       console.error("Currency fetch error:", err);
       throw err;
+
     }
   };
 

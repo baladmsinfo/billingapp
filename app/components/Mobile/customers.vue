@@ -105,9 +105,10 @@
             <v-icon size="48" color="grey">mdi-account-off</v-icon>
             <div class="text-subtitle-1 mt-2">No parties found</div>
             <v-btn color="primary" rounded="xl" class="mt-3" @click="openAddDialog">
-                Add Customer
+                Add Party
             </v-btn>
         </v-card>
+
 
         <!-- FAB ADD BUTTON -->
         <v-btn class="fab-rich" icon color="primary" size="large" @click="openAddDialog">
@@ -122,10 +123,10 @@
             <v-card rounded="xl" class="pa-4">
 
                 <div class="text-h6  font-weight-bold mb-4">
-                    {{ editMode ? "Edit Customer" : "Add Customer" }}
+                    {{ editMode ? "Edit Party" : "Add Party" }}
                 </div>
 
-                <v-text-field v-model="form.name" label="Customer Name" rounded="lg" variant="outlined"
+                <v-text-field v-model="form.name" label="Party Name" rounded="lg" variant="outlined"
                     density="comfortable" class="mb-3" />
 
                 <v-text-field v-model="form.phone" label="Phone" variant="outlined" rounded="lg" density="comfortable"
@@ -153,7 +154,7 @@
         <v-dialog v-model="deleteDialog" max-width="400">
             <v-card class="pa-4" rounded="xl">
 
-                <div class="text-h6  font-weight-bold mb-3">Delete Customer?</div>
+                <div class="text-h6  font-weight-bold mb-3">Delete Party?</div>
                 <p class="text-body-2">This action cannot be undone.</p>
 
                 <v-row class="mt-4">

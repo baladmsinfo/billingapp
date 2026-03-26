@@ -3,15 +3,16 @@
 
     <!-- PAGE HEADER -->
     <div class="d-flex justify-space-between align-center mb-6">
-      <h2 class="text-h5 font-weight-bold">Customer Management</h2>
+      <h2 class="text-h5 font-weight-bold">Party Management</h2>
 
       <v-btn color="primary" rounded="lg" @click="openAddDialog">
-        <v-icon start>mdi-plus</v-icon> Add Customer
+        <v-icon start>mdi-plus</v-icon> Add Party
       </v-btn>
     </div>
 
     <!-- SEARCH -->
-    <v-text-field v-model="search" label="Search customers" prepend-inner-icon="mdi-magnify" variant="outlined"
+    <v-text-field v-model="search" label="Search Party
+    " prepend-inner-icon="mdi-magnify" variant="outlined"
       density="comfortable" class="mb-4" rounded="lg" />
 
     <v-data-table :headers="headers" :items="filteredCustomers" :search="search" class="elevation-1" item-key="id"
@@ -136,7 +137,7 @@
           {{ editMode ? "Edit Customer" : "Add Customer" }}
         </div>
 
-        <v-text-field v-model="form.name" label="Customer Name" variant="outlined" rounded="lg" class="mb-3" />
+        <v-text-field v-model="form.name" label="Party Name" variant="outlined" rounded="lg" class="mb-3" />
         <v-text-field v-model="form.phone" label="Phone" variant="outlined" rounded="lg" class="mb-3" />
         <v-text-field v-model="form.email" label="Email" variant="outlined" rounded="lg" class="mb-3" />
 

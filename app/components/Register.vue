@@ -132,6 +132,7 @@ const currencyList = ref([]);
 onMounted(async () => {
     try {
         const list = await getCurrencies();
+        console.log(list,"list")
 
         currencyList.value = list.map(c => ({
             title: `${c.code} - ${c.name}`,

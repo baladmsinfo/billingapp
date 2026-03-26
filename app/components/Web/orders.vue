@@ -103,7 +103,7 @@
           </v-col>
 
           <v-col cols="12" sm="8">
-            <v-autocomplete label="Select Customer / Vendor" :items="parties" item-title="name" item-value="id"
+            <v-autocomplete label="Select Party / Vendor" :items="parties" item-title="name" item-value="id"
               v-model="form.party_id" density="comfortable" variant="outlined" clearable />
           </v-col>
 
