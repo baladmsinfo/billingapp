@@ -10,6 +10,7 @@
       rounded="lg"
       class="mb-1 report-item"
       :to="item.to"
+      @click="handleClick(item)"
     >
       <template #prepend>
         <v-avatar size="36" color="primary" variant="tonal">
@@ -17,7 +18,10 @@
         </v-avatar>
       </template>
 
-      <v-list-item-title class="font-weight-medium">
+      <v-list-item-title 
+        class="font-weight-medium"
+        :class="{ 'text-red': item.text === 'Logout' }"
+      >
         {{ item.text }}
       </v-list-item-title>
 
@@ -33,12 +37,23 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   items: {
     type: Array,
     required: true,
   },
 });
+
+const emit = defineEmits(["item-click"]);
+
+// ✅ Handle click
+const handleClick = (item) => {
+  // If it's logout → emit
+  if (item.action === "logout") {
+    emit("item-click", item);
+  }
+  // else navigation happens automatically via :to
+};
 </script>
 
 <style scoped>

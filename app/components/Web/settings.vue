@@ -11,29 +11,28 @@
     <!-- SETTINGS TABLE -->
     <v-card elevation="1">
       <v-table>
-
-        <!-- TABLE BODY -->
         <tbody>
           <tr 
             v-for="(item, i) in items" 
             :key="i" 
             class="settings-row"
-            @click="$router.push(item.to)"
+            @click="$emit('item-click', item)"
           >
-            <!-- ICON + TEXT like your screenshot -->
             <td>
               <div class="d-flex align-center">
                 <v-avatar size="36" color="primary" variant="tonal" class="mr-3">
                   <v-icon :icon="item.icon" />
                 </v-avatar>
 
-                <div class="text-body-1 font-weight-medium">
+                <div 
+                  class="text-body-1 font-weight-medium"
+                  :class="{ 'text-red': item.text === 'Logout' }"
+                >
                   {{ item.text }}
                 </div>
               </div>
             </td>
 
-            <!-- CHEVRON -->
             <td class="text-right">
               <v-icon>mdi-chevron-right</v-icon>
             </td>
@@ -52,7 +51,10 @@ defineProps({
     required: true,
   },
 });
+
+defineEmits(["item-click"]);
 </script>
+
 
 <style scoped>
 .settings-row {
