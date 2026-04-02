@@ -1,4 +1,4 @@
-import { eq, desc, asc, sql } from "drizzle-orm";
+import { eq, desc, asc, sql, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import {
   invoices,
@@ -17,7 +17,6 @@ import { enqueueSync } from "@/composables/pos/useSyncQueue";
 const now = () => Date.now();
 
 export function useInvoice() {
-  /* ================= DB ================= */
   const dbReady = async () => {
     const { drizzleDb, persistDb } = await useDb();
     return { drizzleDb, persistDb };
@@ -35,6 +34,7 @@ export function useInvoice() {
       );
   };
 
+  /* ================= PRODUCTS ================= */
   const getAllProducts = async (company_id: string) => {
     const { drizzleDb } = await dbReady();
 
@@ -52,7 +52,6 @@ export function useInvoice() {
       .leftJoin(items, eq(items.product_id, products.id))
       .where(eq(products.company_id, company_id));
 
-    // Group items under each product
     const map = new Map();
 
     for (const r of rows) {
@@ -78,6 +77,7 @@ export function useInvoice() {
     return Array.from(map.values());
   };
 
+  /* ================= TAX ================= */
   const getAllTaxRates = async (company_id: string) => {
     const { drizzleDb } = await dbReady();
 
@@ -94,29 +94,13 @@ export function useInvoice() {
     }));
   };
 
-  /* ================= INVOICE ================= */
-  const createInvoice = async (data: {
-    company_id: string;
-    party_id: string;
-    type: "SALE" | "POS" | "PURCHASE" | "RETURN" | "EXPENSE" | "OTHER";
-    items: Array<{
-      product_id: string;
-      item_id: string;
-      quantity: number;
-      price: number;
-    }>;
-    total_amount: number;
-    tax_amount?: number;
-    discount_amount?: number;
-    due_date?: number;
-  }) => {
-
+  /* ================= CREATE INVOICE ================= */
+  const createInvoice = async (data: any) => {
     const { drizzleDb, persistDb } = await dbReady();
 
     const invoice_id = uuidv4();
     const invoice_number = `INV-${Date.now()}`;
 
-    // 1️⃣ Create invoice
     await drizzleDb.insert(invoices).values({
       id: invoice_id,
       invoice_number,
@@ -127,12 +111,11 @@ export function useInvoice() {
       tax_amount: data.tax_amount ?? 0,
       due_date: data.due_date ?? null,
       status: "PENDING",
-      date: now(),
+      date: data.date,
       created_at: now(),
       updated_at: now(),
     });
 
-    // 2️⃣ Insert invoice items
     for (const item of data.items) {
       await drizzleDb.insert(invoice_items).values({
         id: uuidv4(),
@@ -153,98 +136,10 @@ export function useInvoice() {
     return invoice_id;
   };
 
-  /* ================= CART → INVOICE ================= */
-  const generateInvoiceFromCart = async (cart_id: string) => {
-    const { drizzleDb, persistDb } = await dbReady();
-    const [cart] = await drizzleDb
-      .select()
-      .from(carts)
-      .where(eq(carts.id, cart_id))
-      .limit(1);
-    if (!cart) throw new Error("Cart not found");
-
-    const items = await drizzleDb
-      .select()
-      .from(cart_items)
-      .where(eq(cart_items.cart_id, cart_id));
-    const invoice_id = uuidv4();
-    const invoice_number = `INV-${Date.now()}`;
-
-    await drizzleDb.insert(invoices).values({
-      id: invoice_id,
-      invoice_number,
-      company_id: cart.company_id,
-      customer_id: cart.customer_id,
-      cart_id,
-      total_amount: cart.total_amount,
-      status: "PENDING",
-      date: now(),
-      created_at: now(),
-      updated_at: now(),
-    });
-
-    for (const item of items) {
-      await drizzleDb.insert(invoice_items).values({
-        id: uuidv4(),
-        invoice_id,
-        product_id: item.product_id,
-        item_id: item.item_id,
-        quantity: item.quantity,
-        price: item.price,
-        total: item.total,
-        paid_amount: 0,
-        status: "ORDERED",
-        created_at: now(),
-        updated_at: now(),
-      });
-    }
-
-    await drizzleDb
-      .update(carts)
-      .set({ status: "CHECKEDOUT", updated_at: now() })
-      .where(eq(carts.id, cart_id));
-
-    await enqueueSync({
-      entity: "invoices",
-      entity_id: invoice_id,
-      action: "CREATE",
-      payload: { cart_id },
-    });
-
-    await persistDb();
-    return invoice_id;
-  };
-
-  /* ================= STATUS ================= */
-  const markInvoicePaid = async (invoice_id: string) => {
-    const { drizzleDb, persistDb } = await dbReady();
-    await drizzleDb
-      .update(invoices)
-      .set({ status: "PAID", updated_at: now() })
-      .where(eq(invoices.id, invoice_id));
-    await enqueueSync({
-      entity: "invoices",
-      entity_id: invoice_id,
-      action: "UPDATE",
-      payload: { status: "PAID" },
-    });
-    await persistDb();
-  };
-
-  const cancelInvoice = async (invoice_id: string) => {
-    const { drizzleDb, persistDb } = await dbReady();
-    await drizzleDb
-      .update(invoices)
-      .set({ status: "CANCELLED", updated_at: now() })
-      .where(eq(invoices.id, invoice_id));
-    await persistDb();
-  };
-
-  /* ================= FETCH ================= */
+  /* ================= GET INVOICE BY ID ================= */
   const getInvoiceById = async (invoice_id: string) => {
     const { drizzleDb } = await dbReady();
 
-    // 1️⃣ Fetch invoice
     const [invoice] = await drizzleDb
       .select()
       .from(invoices)
@@ -253,104 +148,90 @@ export function useInvoice() {
 
     if (!invoice) return null;
 
-    // 2️⃣ Fetch invoice items WITH product info
-    const items = await drizzleDb
+    const itemsData = await drizzleDb
       .select({
         id: invoice_items.id,
         quantity: invoice_items.quantity,
         price: invoice_items.price,
         total: invoice_items.total,
         status: invoice_items.status,
-
         product_id: products.id,
         product_name: products.name,
-        product_sku: products.sku,
-        product_price: products.price,
       })
       .from(invoice_items)
       .leftJoin(products, eq(invoice_items.product_id, products.id))
       .where(eq(invoice_items.invoice_id, invoice_id));
 
-    // 3️⃣ Return clean object
     return {
       ...invoice,
-      items: items.map((i) => ({
-        id: i.id,
-        quantity: i.quantity,
-        price: i.price,
-        total: i.total,
-        status: i.status,
-        product: {
-          id: i.product_id,
-          name: i.product_name,
-          sku: i.product_sku,
-          price: i.product_price,
-        },
-      })),
+      items: itemsData,
     };
   };
-  /**
-   * Server-side paginated & sortable invoices
-   */
-  const getCompanyInvoicesServer = async (opts: {
-    company_id: string;
-    page?: number;        // zero-based
-    limit?: number;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
-    status?: string | null;
-    type?: string | null;
-    search?: string | null;
-    dateStart?: number | null;
-    dateEnd?: number | null;
-  }) => {
+
+  /* ================= GET INVOICES (FIXED) ================= */
+  const getCompanyInvoicesServer = async (opts: any) => {
     const { drizzleDb } = await dbReady();
 
     const page = opts.page ?? 0;
     const limit = opts.limit ?? 20;
     const offset = page * limit;
 
-    const sortField = invoices[opts.sortBy ?? "date"] ?? invoices.date;
+   
+    let sortField = invoices.date;
+
+    if (opts.sortBy === "total_amount") {
+      sortField = invoices.total_amount;
+    } else if (opts.sortBy === "status") {
+      sortField = invoices.status;
+    } else if (opts.sortBy === "invoice_number") {
+      sortField = invoices.invoice_number;
+    }
+
     const sortDirection = opts.sortOrder === "asc" ? asc : desc;
 
-    // --------------------------
-    // BUILD FILTER CONDITIONS
-    // --------------------------
-    const whereConditions = [
+    
+    const conditions: any[] = [
       eq(invoices.company_id, opts.company_id)
     ];
 
-    // STATUS FILTER
     if (opts.status) {
-      whereConditions.push(eq(invoices.status, opts.status));
+      conditions.push(eq(invoices.status, opts.status));
     }
 
-    // TYPE FILTER
     if (opts.type) {
-      whereConditions.push(eq(invoices.type, opts.type));
+      conditions.push(eq(invoices.type, opts.type));
     }
 
-    // SEARCH FILTER
     if (opts.search) {
-      whereConditions.push(
+      conditions.push(
         sql`LOWER(${invoices.invoice_number}) LIKE LOWER('%' || ${opts.search} || '%')`
       );
     }
 
-    // DATE RANGE
     if (opts.dateStart && opts.dateEnd) {
-      whereConditions.push(
+      conditions.push(
         sql`${invoices.date} BETWEEN ${opts.dateStart} AND ${opts.dateEnd}`
       );
     }
 
-    // --------------------------
-    // MAIN QUERY
-    // --------------------------
+    
     const rows = await drizzleDb
-      .select()
+      .select({
+       
+        invoiceNumber: invoices.invoice_number,
+        type: invoices.type,
+        status: invoices.status,
+         partyname: parties.name,
+        totalamount: invoices.total_amount,
+        taxamount: invoices.tax_amount,
+        date: invoices.date,
+        due_date: invoices.due_date,
+
+        
+      })
       .from(invoices)
-      .where(sql`${sql.join(whereConditions, sql` AND `)}`)
+      .leftJoin(parties, eq(invoices.party_id, parties.id))
+      .where(and(...conditions)) 
       .orderBy(sortDirection(sortField))
       .limit(limit)
       .offset(offset);
@@ -360,9 +241,6 @@ export function useInvoice() {
 
   return {
     createInvoice,
-    generateInvoiceFromCart,
-    markInvoicePaid,
-    cancelInvoice,
     getInvoiceById,
     getAllTaxRates,
     getCompanyInvoicesServer,

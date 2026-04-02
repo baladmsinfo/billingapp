@@ -65,7 +65,7 @@
 
             <v-list>
               <v-list-item @click="editTaxRate(item)">Edit</v-list-item>
-              <v-list-item class="text-red" @click="confirmDelete(item.id)">Delete</v-list-item>
+              <v-list-item class="text-red" @click="confirmDelete(item)">Delete</v-list-item>
             </v-list>
           </v-menu>
         </template>
@@ -181,6 +181,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useTaxRates } from "@/composables/pos/useTaxrates";
+import { Filesystem, Directory } from "@capacitor/filesystem";
 
 const COMPANY_ID = "LOCAL_COMPANY";
 
@@ -223,6 +224,8 @@ const filteredRates = computed(() =>
 
 /* INIT */
 onMounted(async () => {
+  
+
   rates.value = await fetchTaxRates(COMPANY_ID);
 });
 
@@ -235,8 +238,13 @@ function openAddDialog() {
 
 /* EDIT */
 function editTaxRate(t) {
+  console.log("Edit item:", JSON.stringify(t));
   editMode.value = true;
-  form.value = { ...t };
+  form.value = {
+    id: t.id,
+    name: t.name,
+    percentage: t.percentage,
+  };
   dialog.value = true;
 }
 
@@ -263,8 +271,8 @@ async function saveTaxRate() {
 }
 
 /* DELETE */
-function confirmDelete(id) {
-  deleteId = id;
+function confirmDelete(item) {
+  deleteId = item.id;  // make sure you're passing the full item, not item.id
   deleteDialog.value = true;
 }
 

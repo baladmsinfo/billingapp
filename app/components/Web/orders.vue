@@ -71,12 +71,24 @@
           ₹{{ Number(item.total_amount).toFixed(2) }}
         </template>
 
+        <template #item.tax_amount="{ item }">
+    ₹{{ Number(item.tax_amount).toFixed(2) }}
+  </template>
+
         <!-- ACTION COLUMN -->
         <template #item.actions="{ item }">
           <v-btn icon size="small" @click="onInvoiceClick(item)">
             <v-icon>mdi-eye</v-icon>
           </v-btn>
         </template>
+
+        <template #item.date="{ item }">
+    {{ formatDate(item.date) }}
+  </template>
+
+  <template #item.due_date="{ item }">
+    {{ formatDate(item.due_date) }}
+  </template>
       </v-data-table>
 
       <!-- LOAD MORE -->
@@ -201,7 +213,13 @@ import { useRouter } from "vue-router";
 import { DEFAULT_COMPANY_ID } from "@/constants/company";
 import { useInvoice } from "@/composables/pos/useInvoices";
 
-const company_id = String(DEFAULT_COMPANY_ID);
+const formatDate = (ts: number | null) => {
+  if (!ts) return '—'
+  return new Date(ts).toLocaleDateString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric'
+  })
+}
+const company_id = DEFAULT_COMPANY_ID; // remove String()
 
 const createDialog = ref(false);
 const { createInvoice, getAllTaxRates, getPartiesByType, getAllProducts } = useInvoice();
@@ -212,6 +230,7 @@ const parties = ref([]);
 const products = ref([]);
 
 const taxRates = ref([]);
+
 
 const loadTaxRates = async () => {
   taxRates.value = await getAllTaxRates(company_id);
@@ -394,6 +413,7 @@ const submitInvoice = async () => {
     company_id,
     type: form.value.type,
     party_id: form.value.party_id,
+    date: new Date(form.value.date).getTime(),
     items: form.value.items.map(r => ({
       product_id: r.product_id,
       item_id: r.item_id,
@@ -403,14 +423,17 @@ const submitInvoice = async () => {
       tax_percent: r.tax_percent,
     })),
     total_amount: Number(form.value.total_amount),
+    tax_amount: parseFloat(taxAmount.value),
     due_date: form.value.due_date ? new Date(form.value.due_date).getTime() : null,
     notes: form.value.notes,
   };
+console.log("taxAmount.value:", taxAmount.value);
+  console.log("form items:", JSON.stringify(form.value.items, null, 2));
 
-  console.log("Creating invoice with payload:", payload);
 
   try {
     const id = await createInvoice(payload);
+    emit("refreshInvoices");
     console.log("Invoice Created:", id);
     createDialog.value = false;
   } catch (err) {
@@ -425,7 +448,7 @@ const props = defineProps<{
   hasMore: boolean;
 }>();
 
-const emit = defineEmits(["loadMore", "filterChanged"]);
+const emit = defineEmits(["loadMore", "filterChanged","refreshInvoices"]);
 const router = useRouter();
 
 const showFilters = ref(false);

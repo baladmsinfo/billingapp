@@ -9,18 +9,21 @@ export const useTaxRates = () => {
     /* ===============================
        CREATE TAX RATE
     =============================== */
-    const createTaxRate = async (data) => {
-        const { drizzleDb, persistDb } = await useDb();
+ const createTaxRate = async (data) => {
+  const { drizzleDb, persistDb } = await useDb();
 
-        await drizzleDb.insert(tax_rates).values({
-            id: uuidv4(),
-            ...data,
-            created_at: now(),
-            updated_at: now(),
-        });
+  await drizzleDb.insert(tax_rates).values({
+    id: uuidv4(),        // ✅ explicit
+    name: data.name,
+    percentage: Number(data.percentage),
+    company_id: data.company_id,
+    description: data.description ?? null,
+    created_at: now(),
+    updated_at: now(),
+  });
 
-        await persistDb();
-    };
+  await persistDb();
+};
 
     /* ===============================
        FETCH ALL TAX RATES BY COMPANY

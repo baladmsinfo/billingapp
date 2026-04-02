@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { products, categories, items } from "@/db/schema";
+import { products, categories, items, tax_rates} from "@/db/schema";
 import { useDb } from "@/db/client";
 
 const now = () => Math.floor(Date.now() / 1000);
@@ -78,13 +78,52 @@ export const useProducts = () => {
       .from(items)
       .where(eq(items.company_id, filter.company_id));
 
-    return prods.map((p) => ({
-      ...p,
-      items: allItems.filter((i) => i.product_id === p.id),
-      stock: allItems
-        .filter((i) => i.product_id === p.id)
-        .reduce((s, i) => s + (i.quantity ?? 0), 0),
-    }));
+    const taxRatesList = await drizzleDb.select().from(tax_rates)
+  .where(eq(tax_rates.company_id, filter.company_id));
+
+const taxRateMap = Object.fromEntries(taxRatesList.map(t => [t.id, t.percentage]));
+
+const taxratematch = (i)=> {
+ 
+
+  const taxrate = taxRatesList.filter((t)=>{
+     
+    if (t.id == i.tax_rate_id) {
+      return true;
+      
+    } else {
+      return false;
+    }
+  })
+return taxrate[0]?.percentage
+}
+
+console.log("productwithitems",prods.map((p) => ({
+  ...p,
+  items: allItems
+    .filter((i) => i.product_id === p.id)
+    .map((i) => ({
+      ...i,
+      tax_rate: taxratematch(i)
+    })),
+  stock: allItems
+    .filter((i) => i.product_id === p.id)
+    .reduce((s, i) => s + (i.quantity ?? 0), 0),
+})));
+
+
+return prods.map((p) => ({
+  ...p,
+  items: allItems
+    .filter((i) => i.product_id === p.id)
+    .map((i) => ({
+      ...i,
+      tax_rate: taxratematch(i)
+    })),
+  stock: allItems
+    .filter((i) => i.product_id === p.id)
+    .reduce((s, i) => s + (i.quantity ?? 0), 0),
+}));
   };
 
   /* ================= UPDATE PRODUCT ================= */
@@ -126,8 +165,8 @@ export const useProducts = () => {
       variant: variant.variant,
       price: variant.price,
       mrp: variant.mrp,
-      quantity: variant.quantity,
-      location: variant.location,
+      quantity: variant.quantity || 0,
+      location: variant.location || " ",
       tax_rate_id: variant.tax_rate_id ?? null,
       company_id: variant.company_id,
       created_at: now(),

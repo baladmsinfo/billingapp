@@ -1,18 +1,19 @@
 <template>
   <div>
     <!-- Web Orders: Desktop / Large Screens -->
-    <Web-Orders
-      v-if="!device.isMobile"
-      :items="invoices"
-      :loading="loading"
-      :page="page"
-      :itemsPerPage="itemsPerPage"
-      :sortBy="sortBy"
-      :sortDesc="sortDesc"
-      @update="handleWebUpdate"
-      @rowClick="onRowClick"
-      @filterChanged="applyFilters"
-    />
+   <Web-Orders
+  v-if="!device.isMobile"
+  :invoices="invoices"
+  :loading="loading"
+  :page="page"
+  :itemsPerPage="itemsPerPage"
+  :sortBy="sortBy"
+  :sortDesc="sortDesc"
+  @update="handleWebUpdate"
+  @rowClick="onRowClick"
+  @filterChanged="applyFilters"
+  @refreshInvoices="loadInvoices"
+/>
 
     <!-- Mobile Orders -->
     <Mobile-Orders
@@ -50,9 +51,10 @@ const loading = ref(false);
 const hasMore = ref(true);
 
 const page = ref(1);               // 1-based UI page
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(15);
 const sortBy = ref("date");
 const sortDesc = ref(true);
+
 
 /* ------------------------------
    FILTERS (Shared with Mobile)
@@ -155,13 +157,19 @@ const applyFilters = (filters: any) => {
   fetchInvoices();
 };
 
+
+const loadInvoices = async () => {
+  page.value = 1;       // reset page
+  hasMore.value = true;
+
+  await fetchInvoices(); // ✅ reuse your existing API logic
+};
+onMounted(() => {
+  loadInvoices();
+});
+
 /* ------------------------------
    ROW CLICK → DETAILS PAGE
 ------------------------------ */
-const onRowClick = (invoice: any) => {
-  if (!invoice?.id) return;
-  router.push(`/pos/orders/${invoice.id}`);
-};
 
-onMounted(() => fetchInvoices());
 </script>

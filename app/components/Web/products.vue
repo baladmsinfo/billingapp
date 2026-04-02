@@ -31,11 +31,21 @@
         </v-col>
 
         <!-- SUBCATEGORY -->
-        <v-col cols="12" md="4">
-          <v-select v-model="sub_category_id" :items="filteredSubcategories" item-title="name" item-value="id"
-            label="Subcategory" prepend-inner-icon="mdi-shape-outline" variant="solo-filled" density="comfortable"
-            rounded="lg" clearable hide-details class="modern-input" />
-        </v-col>
+        <v-select
+  :key="String(category_id)"
+  v-model="sub_category_id"
+  :items="filteredSubcategories"
+  item-title="name"
+  item-value="id"
+  label="Subcategory"
+  prepend-inner-icon="mdi-shape-outline"
+  variant="solo-filled"
+  density="comfortable"
+  rounded="lg"
+  clearable
+  hide-details
+  class="modern-input"
+/>
 
       </v-row>
     </v-card>
@@ -83,11 +93,17 @@
                 Variants ({{ item.variants.length }})
               </h3>
 
-              <v-data-table :headers="variantHeaders" :items="item.variants" hide-default-footer class="elevation-0">
-                <template #item.price="{ item }">
-                  ₹{{ item.price }}
-                </template>
-              </v-data-table>
+             <v-data-table :headers="variantHeaders" :items="item.variants" hide-default-footer>
+
+  <template #item.price="{ item }">
+    ₹{{ item.price }}
+  </template>
+
+  <template #item.tax_rate="{ item }">
+  {{ item.tax_rate ? item.tax_rate + '%' : '-' }}
+</template>
+
+</v-data-table>
             </v-card>
 
           </td>
@@ -179,6 +195,16 @@
           <v-text-field label="MRP" type="number" v-model.number="variantForm.mrp" variant="solo-filled" rounded="lg" />
           <v-text-field label="Quantity" type="number" v-model.number="variantForm.quantity" variant="solo-filled"
             rounded="lg" />
+   <v-select
+  label="Tax"
+  v-model="variantForm.tax_rate"
+  :items="taxRates"
+  item-title="display"
+  item-value="id"
+  variant="solo-filled"
+  rounded="lg"
+  
+/>
         </v-form>
 
         <v-divider class="my-4"></v-divider>
@@ -224,6 +250,7 @@
 
         <v-divider class="my-4"></v-divider>
 
+
         <div class="text-right">
           <v-btn class="mr-2" variant="text" @click="dialogCreateSubcategory = false">Cancel</v-btn>
           <v-btn color="primary" rounded="lg" @click="saveNewSubcategory">Save</v-btn>
@@ -238,6 +265,12 @@
 import { ref, computed, watch, onMounted } from "vue"
 import { useProducts } from "@/composables/pos/useProducts"
 import { useCategories } from "@/composables/pos/useCategories"
+import { useTaxRates } from "@/composables/pos/useTaxRates";
+
+const { fetchTaxRates } = useTaxRates();
+const taxRates = ref<any[]>([]);
+
+
 
 const COMPANY_ID = "LOCAL_COMPANY"
 
@@ -263,6 +296,7 @@ const form = ref<any>({})
 const variantForm = ref<any>({})
 const formRef = ref()
 const variantFormRef = ref()
+
 const formValid = ref(false)
 const variantFormValid = ref(false)
 
@@ -295,6 +329,7 @@ const variantHeaders = [
   { title: "Price", key: "price" },
   { title: "MRP", key: "mrp" },
   { title: "Qty", key: "quantity" },
+  { title: "Tax Rate", key: "tax_rate" },
 ];
 
 /* 🔥 FIX FOR FILTER SECTION VALUES 🔥 */
@@ -310,9 +345,12 @@ const subcategoryList = ref<any[]>([]);
 // Filtered subcategories based on parent selection
 const filteredSubcategories = computed(() => {
   if (!category_id.value) return [];
-  return subcategoryList.value.filter(
-    (s) => Number(s.parent_id) === Number(category_id.value)
+  return category.value.filter(
+    (c) => c.parent_id !== null && c.parent_id === category_id.value
   );
+});
+watch(category_id, () => {
+  sub_category_id.value = null;
 });
 
 const normalizedProducts = computed(() =>
@@ -329,6 +367,7 @@ const normalizedProducts = computed(() =>
 
 onMounted(async () => {
   category.value = await fetchCategories(COMPANY_ID) || [];
+  console.log("All categories:", category.value);
 
   categories.value = await getCategories({ company_id: COMPANY_ID, parent_id: null }) || [];
 
@@ -337,6 +376,13 @@ onMounted(async () => {
   subcategoryList.value = category.value.filter(c => c.parent_id !== null);
 
   products.value = await listProducts({ company_id: COMPANY_ID }) || [];
+
+    taxRates.value = (await fetchTaxRates(COMPANY_ID) || []).map(t => ({
+  ...t,
+  display: `${t.name} (${t.percentage}%)`
+}));
+console.log(taxRates.value,"taxRatesoptions")
+
 });
 
 const categoryMap = computed(() =>
@@ -449,6 +495,7 @@ const submitProduct = async () => {
   isEdit.value ? await updateProduct(form.value.id, payload) : await createProduct(payload)
   productDialog.value = false
   products.value = await listProducts({ company_id: COMPANY_ID }) || []
+
 }
 
 const removeProduct = async (id: string) => {
@@ -461,15 +508,20 @@ const openVariantDialog = (product: any, variant: any = null) => {
   currentProduct = product
   if (!currentProduct.items) currentProduct.items = []
   variantEdit.value = !!variant
-  variantForm.value = variant ? { ...variant } : { variant: "", sku: "", price: 0, mrp: 0, quantity: 0 }
+  variantForm.value = variant ? { ...variant } : { variant: "", sku: "", price: 0, mrp: 0, quantity: 0,tax_rate:null }
   variantDialog.value = true
 }
 
 const submitVariant = async () => {
-  const payload = {
-    ...variantForm.value,
-    company_id: COMPANY_ID,
-  };
+const payload = {
+  
+  ...variantForm.value,
+  tax_rate_id: variantForm.value.tax_rate, // ✅ now correct
+  company_id: COMPANY_ID,
+};
+  console.log("payload",payload)
+
+
 
   if (variantEdit.value) {
     // UPDATE VARIANT
