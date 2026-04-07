@@ -90,6 +90,7 @@ const fetchInvoices = async (opts?: any) => {
     invoices.value = rows;
     hasMore.value = rows.length === itemsPerPage.value;
   } catch (err) {
+    console.error("fetchInvoices error:", err);
     invoices.value = [];
     hasMore.value = false;
   } finally {

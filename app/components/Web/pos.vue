@@ -158,77 +158,94 @@ function checkout() {
       <!-- Top bar -->
       <div class="top-bar">
         <div class="brand-mark">
-          <span class="brand-icon">⊛</span>
-          <span class="brand-name">POS Terminal</span>
+          <div class="brand-icon-wrap">
+            <v-icon size="20" color="primary">mdi-point-of-sale</v-icon>
+          </div>
+          <div>
+            <div class="brand-name">POS Terminal</div>
+            <div class="brand-sub">Quick Sales</div>
+          </div>
         </div>
 
         <div class="search-wrapper">
-          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input
+          <v-text-field
             v-model="searchQuery"
-            class="search-input"
             placeholder="Search products…"
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            bg-color="white"
+            class="search-field"
           />
         </div>
 
         <!-- Cart indicator — only shows when cart has items -->
         <div v-if="cart.length > 0" class="cart-indicator">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="9" cy="21" r="1"/>
-            <circle cx="20" cy="21" r="1"/>
-            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-          </svg>
-          <span class="indicator-badge">{{ cartCount }}</span>
+          <v-badge :content="cartCount" color="primary" floating>
+            <v-icon size="22" color="primary">mdi-cart-outline</v-icon>
+          </v-badge>
+          <span class="cart-indicator-label">Cart</span>
         </div>
       </div>
 
       <!-- Category filters -->
       <div class="filter-area">
+        <div class="filter-label">
+          <v-icon size="13" class="mr-1" color="grey">mdi-shape-outline</v-icon>
+          Categories
+        </div>
         <div class="category-bar">
-          <button
-            class="cat-pill"
-            :class="{ active: selectedCategoryId === null }"
+          <v-chip
+            class="cat-chip"
+            :color="selectedCategoryId === null ? 'primary' : undefined"
+            :variant="selectedCategoryId === null ? 'flat' : 'tonal'"
+            size="small"
             @click="selectedCategoryId = null"
           >
             All
-          </button>
-          <button
+          </v-chip>
+          <v-chip
             v-for="cat in categories"
             :key="cat.id"
-            class="cat-pill"
-            :class="{ active: selectedCategoryId === cat.id }"
+            class="cat-chip"
+            :color="selectedCategoryId === cat.id ? 'primary' : undefined"
+            :variant="selectedCategoryId === cat.id ? 'flat' : 'tonal'"
+            size="small"
             @click="selectedCategoryId = cat.id"
           >
             {{ cat.name }}
-          </button>
+          </v-chip>
         </div>
 
         <div v-if="subCategories.length > 0" class="subcategory-bar">
-          <button
-            class="sub-pill"
-            :class="{ active: selectedSubCategoryId === null }"
+          <v-chip
+            class="sub-chip"
+            :color="selectedSubCategoryId === null ? 'indigo' : undefined"
+            :variant="selectedSubCategoryId === null ? 'flat' : 'outlined'"
+            size="x-small"
             @click="selectedSubCategoryId = null"
           >
             All
-          </button>
-          <button
+          </v-chip>
+          <v-chip
             v-for="sub in subCategories"
             :key="sub.id"
-            class="sub-pill"
-            :class="{ active: selectedSubCategoryId === sub.id }"
+            class="sub-chip"
+            :color="selectedSubCategoryId === sub.id ? 'indigo' : undefined"
+            :variant="selectedSubCategoryId === sub.id ? 'flat' : 'outlined'"
+            size="x-small"
             @click="selectedSubCategoryId = sub.id"
           >
             {{ sub.name }}
-          </button>
+          </v-chip>
         </div>
       </div>
 
       <!-- Results count -->
       <div class="results-bar">
-        {{ filteredProducts.length }} products
+        <span class="results-count">{{ filteredProducts.length }}</span>
+        <span class="results-text">products found</span>
       </div>
 
       <!-- Product grid -->
@@ -241,11 +258,22 @@ function checkout() {
         >
           <div class="card-image-wrap">
             <img
-              :src="p.image || 'https://dummyimage.com/300x300/1a1e28/c9a84c&text=No+Image'"
+              :src="p.image || 'https://dummyimage.com/300x300/e8edf5/1565c0&text=No+Image'"
               :alt="p.name"
             />
             <div class="card-hover-overlay">
-              <span class="plus-circle">+</span>
+              <v-btn
+                size="small"
+                color="primary"
+                elevation="4"
+                class="add-btn-overlay"
+                icon
+              >
+                <v-icon size="18">mdi-plus</v-icon>
+              </v-btn>
+            </div>
+            <div v-if="p.items?.length > 1" class="variants-badge">
+              {{ p.items.length }} variants
             </div>
           </div>
 
@@ -253,16 +281,15 @@ function checkout() {
             <p class="card-name">{{ p.name }}</p>
             <div class="card-bottom">
               <span class="card-price">₹{{ p.items?.[0]?.price ?? 0 }}</span>
-              <span v-if="p.items?.length > 1" class="card-variant-count">
-                {{ p.items.length }} variants
-              </span>
+              <v-icon size="14" color="primary" class="card-arrow">mdi-chevron-right</v-icon>
             </div>
           </div>
         </div>
 
         <div v-if="filteredProducts.length === 0" class="no-products">
-          <span class="no-products-icon">◎</span>
-          <p>No products found</p>
+          <v-icon size="52" color="grey-lighten-1">mdi-package-variant-remove</v-icon>
+          <p class="no-products-title">No products found</p>
+          <p class="no-products-sub">Try adjusting your search or filters</p>
         </div>
       </div>
     </section>
@@ -275,31 +302,49 @@ function checkout() {
       <aside v-if="cart.length > 0" class="cart-panel">
 
         <div class="cart-header">
-          <h2 class="cart-title">Current Order</h2>
-          <span class="cart-count-badge">{{ cartCount }} items</span>
+          <div>
+            <h2 class="cart-title">Current Order</h2>
+            <div class="cart-subtitle">{{ cartCount }} item{{ cartCount !== 1 ? 's' : '' }} in cart</div>
+          </div>
+          <v-chip color="primary" variant="flat" size="small" class="font-weight-bold">
+            <v-icon start size="14">mdi-cart</v-icon>
+            {{ cartCount }}
+          </v-chip>
         </div>
 
         <div class="cart-body">
           <transition-group name="item-anim" tag="div" class="cart-list">
             <div v-for="item in cart" :key="item.id" class="cart-item">
 
+              <div class="cart-item-avatar">
+                <v-icon size="18" color="primary">mdi-package-variant-closed</v-icon>
+              </div>
+
               <div class="cart-item-info">
                 <p class="cart-item-name">{{ item.name }}</p>
                 <p class="cart-item-rate">
                   ₹{{ item.price }}
-                  <span v-if="item.tax_rate > 0" class="cart-item-tax">+ {{ item.tax_rate }}% tax</span>
+                  <v-chip v-if="item.tax_rate > 0" size="x-small" color="teal" variant="tonal" class="ml-1">
+                    {{ item.tax_rate }}% GST
+                  </v-chip>
                 </p>
               </div>
 
               <div class="cart-item-qty">
-                <button class="qty-btn" @click="decreaseQty(item.id)">−</button>
+                <v-btn icon size="x-small" variant="tonal" color="primary" @click="decreaseQty(item.id)">
+                  <v-icon size="14">mdi-minus</v-icon>
+                </v-btn>
                 <span class="qty-value">{{ item.qty }}</span>
-                <button class="qty-btn" @click="increaseQty(item.id)">+</button>
+                <v-btn icon size="x-small" variant="tonal" color="primary" @click="increaseQty(item.id)">
+                  <v-icon size="14">mdi-plus</v-icon>
+                </v-btn>
               </div>
 
               <div class="cart-item-total">
                 <p class="cart-item-amount">₹{{ (item.price * item.qty).toFixed(2) }}</p>
-                <button class="remove-btn" @click="removeFromCart(item.id)" title="Remove item">✕</button>
+                <v-btn icon size="x-small" variant="plain" color="red" @click="removeFromCart(item.id)">
+                  <v-icon size="14">mdi-close</v-icon>
+                </v-btn>
               </div>
 
             </div>
@@ -308,28 +353,42 @@ function checkout() {
 
         <!-- Bill summary -->
         <div class="bill-summary">
-          <div class="bill-row">
-            <span>Subtotal</span>
-            <span>₹{{ cartTotals.subtotal.toFixed(2) }}</span>
-          </div>
+          <v-card class="pa-4 rounded-xl" elevation="0" color="grey-lighten-4">
+            <div class="bill-row">
+              <span class="bill-label">Subtotal</span>
+              <span class="bill-value">₹{{ cartTotals.subtotal.toFixed(2) }}</span>
+            </div>
 
-          <!-- Only show tax row if there is any tax -->
-          <div v-if="cartTotals.totalTax > 0" class="bill-row tax-row">
-            <span>Tax</span>
-            <span>₹{{ cartTotals.totalTax.toFixed(2) }}</span>
-          </div>
+            <div v-if="cartTotals.totalTax > 0" class="bill-row tax-row">
+              <span class="bill-label">
+                <v-icon size="12" class="mr-1" color="teal">mdi-percent</v-icon>
+                GST / Tax
+              </span>
+              <span class="bill-value text-teal">₹{{ cartTotals.totalTax.toFixed(2) }}</span>
+            </div>
 
-          <div class="bill-divider"></div>
+            <v-divider class="my-3" />
 
-          <div class="bill-row total-row">
-            <span>Grand Total</span>
-            <span>₹{{ cartTotals.grandTotal.toFixed(2) }}</span>
-          </div>
+            <div class="bill-row total-row">
+              <span class="total-label">Grand Total</span>
+              <span class="total-value text-primary">₹{{ cartTotals.grandTotal.toFixed(2) }}</span>
+            </div>
+          </v-card>
         </div>
 
-        <button class="checkout-btn" @click="checkout">
-          Place Order · ₹{{ cartTotals.grandTotal.toFixed(2) }}
-        </button>
+        <div class="cart-footer">
+          <v-btn
+            block
+            color="primary"
+            size="large"
+            elevation="2"
+            class="checkout-btn rounded-xl py-3"
+            @click="checkout"
+          >
+            <v-icon start size="18">mdi-receipt-text-check-outline</v-icon>
+            Place Order · ₹{{ cartTotals.grandTotal.toFixed(2) }}
+          </v-btn>
+        </div>
 
       </aside>
     </transition>
@@ -337,36 +396,45 @@ function checkout() {
     <!-- ═══════════════════════════════════════
          VARIANT DIALOG
     ════════════════════════════════════════ -->
-    <v-dialog v-model="showVariantDialog" max-width="580">
-      <div v-if="selectedProduct" class="dialog-card">
+    <v-dialog v-model="showVariantDialog" max-width="560">
+      <v-card v-if="selectedProduct" class="rounded-xl dialog-card" elevation="8">
 
-        <!-- Product hero with close button -->
+        <!-- Product hero -->
         <div class="dialog-hero">
           <img
-            :src="selectedProduct.image || 'https://dummyimage.com/580x200/0d0f14/c9a84c&text=' + encodeURIComponent(selectedProduct.name)"
+            :src="selectedProduct.image || 'https://dummyimage.com/560x180/e8edf5/1565c0&text=' + encodeURIComponent(selectedProduct.name)"
             :alt="selectedProduct.name"
             class="dialog-hero-img"
           />
-          <!-- Dark gradient so title text is readable -->
           <div class="dialog-hero-gradient"></div>
-          <h3 class="dialog-product-name">{{ selectedProduct.name }}</h3>
-          <button class="dialog-close-btn" @click="closeDialog" title="Close">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M18 6 6 18M6 6l12 12"/>
-            </svg>
-          </button>
+          <div class="dialog-hero-content">
+            <h3 class="dialog-product-name">{{ selectedProduct.name }}</h3>
+          </div>
+          <v-btn
+            icon
+            size="small"
+            variant="flat"
+            color="white"
+            class="dialog-close-btn"
+            @click="closeDialog"
+          >
+            <v-icon size="16" color="grey-darken-2">mdi-close</v-icon>
+          </v-btn>
         </div>
 
         <!-- Body -->
-        <div class="dialog-body">
+        <div class="dialog-body pa-5">
 
-          <p v-if="selectedProduct.description" class="dialog-description">
+          <p v-if="selectedProduct.description" class="dialog-description text-body-2 text-grey-darken-1 mb-4">
             {{ selectedProduct.description }}
           </p>
 
-          <p class="dialog-section-label">Choose a variant</p>
+          <div class="text-caption font-weight-bold text-uppercase text-grey mb-3" style="letter-spacing:0.08em">
+            <v-icon size="12" class="mr-1">mdi-tag-multiple-outline</v-icon>
+            Choose a variant
+          </div>
 
-          <p v-if="!selectedProduct.items?.length" class="dialog-no-variants">
+          <p v-if="!selectedProduct.items?.length" class="text-body-2 text-grey pa-3">
             No variants available for this product.
           </p>
 
@@ -382,14 +450,22 @@ function checkout() {
               }"
               @click="selectVariant(item)"
             >
-              <!-- Left: name + stock -->
               <div class="variant-left">
-                <p class="variant-name">{{ item.variant }}</p>
+                <div class="d-flex align-center gap-2">
+                  <v-icon
+                    size="14"
+                    :color="selectedVariant?.id === item.id ? 'primary' : 'grey'"
+                  >
+                    {{ selectedVariant?.id === item.id ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank' }}
+                  </v-icon>
+                  <p class="variant-name">{{ item.variant }}</p>
+                </div>
                 <p
-                  class="variant-stock"
+                  class="variant-stock ml-5"
                   :class="{
-                    'stock-low': item.quantity > 0 && item.quantity < 5,
-                    'stock-out': item.quantity === 0
+                    'text-orange': item.quantity > 0 && item.quantity < 5,
+                    'text-red': item.quantity === 0,
+                    'text-grey': item.quantity >= 5
                   }"
                 >
                   {{ item.quantity === 0
@@ -401,115 +477,101 @@ function checkout() {
                 </p>
               </div>
 
-              <!-- Right: price + checkmark -->
               <div class="variant-right">
-                <span class="variant-price">₹{{ item.price }}</span>
-                <span v-if="item.tax_rate > 0" class="variant-tax-badge">
+                <v-chip v-if="item.tax_rate > 0" size="x-small" color="teal" variant="tonal" class="mr-2">
                   {{ item.tax_rate }}% GST
-                </span>
-                <span v-if="selectedVariant?.id === item.id" class="variant-check">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                </span>
+                </v-chip>
+                <span class="variant-price">₹{{ item.price }}</span>
+                <v-icon
+                  v-if="selectedVariant?.id === item.id"
+                  size="16"
+                  color="primary"
+                  class="ml-2"
+                >
+                  mdi-check-circle
+                </v-icon>
               </div>
             </div>
           </div>
 
           <!-- Footer actions -->
-          <div class="dialog-footer">
+          <v-divider class="my-4" />
 
-            <!-- Price preview -->
-            <div class="dialog-price-preview">
-              <span class="price-label">
-                {{ selectedVariant ? 'Selected' : 'Pick a variant' }}
-              </span>
-              <span v-if="selectedVariant" class="price-value">
+          <div class="dialog-footer">
+            <div class="dialog-price-preview" v-if="selectedVariant">
+              <div class="text-caption text-grey mb-1">Selected price</div>
+              <div class="text-h5 font-weight-bold text-primary">
                 ₹{{ selectedVariant.price }}
-                <span v-if="selectedVariant.tax_rate > 0" class="price-tax-note">
-                  + ₹{{ (selectedVariant.price * selectedVariant.tax_rate / 100).toFixed(2) }} tax
-                </span>
-              </span>
+              </div>
+              <div v-if="selectedVariant.tax_rate > 0" class="text-caption text-grey">
+                + ₹{{ (selectedVariant.price * selectedVariant.tax_rate / 100).toFixed(2) }} tax
+              </div>
+            </div>
+            <div v-else class="dialog-price-preview">
+              <div class="text-caption text-grey">Pick a variant to continue</div>
             </div>
 
-            <!-- Buttons -->
             <div class="dialog-buttons">
-              <button class="btn-cancel" @click="closeDialog">
+              <v-btn
+                variant="tonal"
+                color="grey"
+                class="rounded-lg mr-2"
+                @click="closeDialog"
+              >
                 Cancel
-              </button>
-              <button
-                class="btn-add"
+              </v-btn>
+              <v-btn
+                color="primary"
+                variant="flat"
+                elevation="2"
+                class="rounded-lg"
                 :disabled="!selectedVariant || selectedVariant.quantity === 0"
                 @click="addSelectedToCart"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="9" cy="21" r="1"/>
-                  <circle cx="20" cy="21" r="1"/>
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                </svg>
+                <v-icon start size="16">mdi-cart-plus</v-icon>
                 Add to Cart
-              </button>
+              </v-btn>
             </div>
-
           </div>
         </div>
-      </div>
+      </v-card>
     </v-dialog>
 
   </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 /* ─── Design Tokens ─────────────────────────────────────── */
 :root {
-  --bg-base:        #0d0f14;
-  --bg-surface:     #13161d;
-  --bg-elevated:    #1a1e28;
-  --bg-hover:       #21263a;
+  --bg-base:        #f4f6f9;
+  --bg-surface:     #ffffff;
+  --bg-elevated:    #f8fafc;
+  --bg-hover:       #f1f5f9;
 
-  --gold:           #c9a84c;
-  --gold-hover:     #deba60;
-  --gold-dim:       rgba(201, 168, 76, 0.13);
-  --gold-border:    rgba(201, 168, 76, 0.28);
+  --border-faint:   #e8ecf0;
+  --border-subtle:  #dde3ea;
 
-  --text-primary:   #f0ede6;
-  --text-secondary: #8a8fa8;
-  --text-muted:     #4e5366;
+  --text-primary:   #1e293b;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
 
-  --border-subtle:  rgba(255, 255, 255, 0.06);
-  --border-mid:     rgba(255, 255, 255, 0.10);
+  --font-sans:      'Plus Jakarta Sans', sans-serif;
 
-  --red:            #e05c5c;
-  --orange:         #e07c4c;
-  --green:          #4eca8b;
-
-  --radius-sm:      8px;
-  --radius-md:      12px;
-  --radius-lg:      18px;
-  --radius-xl:      24px;
-
-  --font-sans:      'DM Sans', sans-serif;
-  --font-display:   'Playfair Display', serif;
-
-  --transition:     0.2s ease;
+  --ease-out:       cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:    cubic-bezier(0.4, 0, 0.2, 1);
+  --t-fast:         0.15s;
+  --t-med:          0.25s;
+  --t-slow:         0.38s;
 }
 
-/* ─── Reset ─────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-button {
-  cursor: pointer;
-  font-family: var(--font-sans);
-  border: none;
-  background: none;
 }
 
 /* ─── Root Layout ───────────────────────────────────────── */
@@ -530,121 +592,106 @@ button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid var(--border-subtle);
-  transition: flex 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: flex var(--t-slow) var(--ease-in-out);
 }
 
 .products-panel.expanded {
-  /* No cart visible — take up full width */
-  border-right: none;
+  /* no border needed */
 }
 
-/* Top bar */
+/* ── Top bar ── */
 .top-bar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 15px 20px;
+  gap: 16px;
+  padding: 14px 24px;
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-faint);
   flex-shrink: 0;
 }
 
 .brand-mark {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
-.brand-icon {
-  font-size: 20px;
-  color: var(--gold);
+.brand-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #e8f0fe 0%, #c7d9ff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ccd9f8;
 }
 
 .brand-name {
-  font-family: var(--font-display);
   font-size: 15px;
+  font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.brand-sub {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-weight: 500;
   letter-spacing: 0.02em;
 }
 
+/* Search */
 .search-wrapper {
   flex: 1;
-  position: relative;
-  max-width: 440px;
+  max-width: 420px;
 }
 
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-muted);
-  pointer-events: none;
+.search-field :deep(.v-field) {
+  border-radius: 10px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
 }
 
-.search-input {
-  width: 100%;
-  padding: 9px 14px 9px 36px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-family: var(--font-sans);
-  outline: none;
-  transition: border-color var(--transition);
-}
-
-.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.search-input:focus {
-  border-color: var(--gold-border);
-}
-
-/* Cart indicator in top bar */
+/* Cart indicator */
 .cart-indicator {
-  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--gold-border);
-  background: var(--gold-dim);
-  color: var(--gold);
-  flex-shrink: 0;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #e8f0fe;
+  border: 1px solid #ccd9f8;
+  cursor: default;
 }
 
-.indicator-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  background: var(--gold);
-  color: #0d0f14;
-  font-size: 9px;
-  font-weight: 700;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.cart-indicator-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1565c0;
 }
 
-/* Category filters */
+/* ── Filters ── */
 .filter-area {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 11px 20px 8px;
+  padding: 12px 24px 10px;
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-faint);
   flex-shrink: 0;
+}
+
+.filter-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
 }
 
 .category-bar,
@@ -653,87 +700,83 @@ button {
   gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
+  flex-wrap: wrap;
 }
 
 .category-bar::-webkit-scrollbar,
-.subcategory-bar::-webkit-scrollbar {
-  display: none;
-}
+.subcategory-bar::-webkit-scrollbar { display: none; }
 
-.cat-pill,
-.sub-pill {
-  padding: 5px 15px;
-  border-radius: 999px;
-  border: 1px solid var(--border-subtle);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 12.5px;
-  font-family: var(--font-sans);
-  white-space: nowrap;
-  transition: all var(--transition);
-}
-
-.cat-pill:hover,
-.sub-pill:hover {
-  border-color: var(--gold-border);
-  color: var(--gold);
-}
-
-.cat-pill.active,
-.sub-pill.active {
-  background: var(--gold-dim);
-  border-color: var(--gold);
-  color: var(--gold);
-  font-weight: 500;
-}
-
-.sub-pill {
-  font-size: 11.5px;
-  padding: 4px 12px;
+.cat-chip,
+.sub-chip {
+  cursor: pointer !important;
+  font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
+  transition: all var(--t-fast) !important;
 }
 
 /* Results bar */
 .results-bar {
-  padding: 8px 20px;
-  font-size: 10.5px;
-  color: var(--text-muted);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 24px;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--border-faint);
+  background: var(--bg-elevated);
 }
 
-/* Product grid */
+.results-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1565c0;
+}
+
+.results-text {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Product Grid ── */
 .product-grid {
   flex: 1;
   overflow-y: auto;
-  padding: 14px 20px 20px;
+  padding: 20px 24px 24px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 16px;
   align-content: start;
   scrollbar-width: thin;
-  scrollbar-color: var(--bg-hover) transparent;
+  scrollbar-color: #e2e8f0 transparent;
 }
 
 .product-card {
   background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  border: 1px solid var(--border-faint);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    transform var(--t-med) var(--ease-out),
+    border-color var(--t-med),
+    box-shadow var(--t-med);
 }
 
 .product-card:hover {
-  border-color: var(--gold-border);
-  transform: translateY(-3px);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  border-color: #90b4f8;
+  transform: translateY(-3px) scale(1.01);
+  box-shadow:
+    0 8px 28px rgba(21, 101, 192, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .card-image-wrap {
   position: relative;
   aspect-ratio: 1 / 1;
   overflow: hidden;
+  background: var(--bg-elevated);
 }
 
 .card-image-wrap img {
@@ -741,7 +784,7 @@ button {
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.35s ease;
+  transition: transform 0.4s var(--ease-out);
 }
 
 .product-card:hover .card-image-wrap img {
@@ -751,44 +794,55 @@ button {
 .card-hover-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.42);
+  background: rgba(21, 101, 192, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity var(--transition);
+  transition: opacity var(--t-med);
 }
 
 .product-card:hover .card-hover-overlay {
   opacity: 1;
 }
 
-.plus-circle {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--gold);
-  color: #0d0f14;
-  font-size: 22px;
-  font-weight: 300;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+.add-btn-overlay {
+  transform: scale(0.85);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.product-card:hover .add-btn-overlay {
+  transform: scale(1);
+}
+
+.variants-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid var(--border-faint);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  backdrop-filter: blur(4px);
 }
 
 .card-info {
-  padding: 10px 12px 13px;
+  padding: 11px 13px 13px;
+  border-top: 1px solid var(--border-faint);
 }
 
 .card-name {
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 6px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
 .card-bottom {
@@ -799,16 +853,20 @@ button {
 
 .card-price {
   font-size: 14px;
-  font-weight: 600;
-  color: var(--gold);
+  font-weight: 700;
+  color: #1565c0;
+  letter-spacing: -0.02em;
 }
 
-.card-variant-count {
-  font-size: 10.5px;
-  color: var(--text-muted);
-  background: var(--bg-elevated);
-  padding: 2px 6px;
-  border-radius: 999px;
+.card-arrow {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity var(--t-fast), transform var(--t-fast);
+}
+
+.product-card:hover .card-arrow {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 /* Empty state */
@@ -818,40 +876,41 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 0;
+  padding: 72px 0;
   gap: 10px;
-  color: var(--text-muted);
 }
 
-.no-products-icon {
-  font-size: 30px;
-}
-
-.no-products p {
+.no-products-title {
   font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.no-products-sub {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* ════════════════════════════════════════
    CART PANEL
-   Slides in from right only when cart > 0
 ════════════════════════════════════════ */
 .cart-panel {
-  width: 355px;
+  width: 360px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
-  border-left: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--border-faint);
   overflow: hidden;
 }
 
 /* Slide transition */
 .cart-slide-enter-active {
-  transition: all 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--t-slow) var(--ease-out);
 }
 
 .cart-slide-leave-active {
-  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.26s var(--ease-in-out);
 }
 
 .cart-slide-enter-from,
@@ -865,34 +924,35 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid var(--border-faint);
   flex-shrink: 0;
+  background: var(--bg-surface);
 }
 
 .cart-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
-.cart-count-badge {
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--gold);
-  color: #0d0f14;
-  padding: 3px 10px;
-  border-radius: 999px;
+.cart-subtitle {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 2px;
 }
 
-/* Cart body / item list */
+/* Cart body */
 .cart-body {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 14px;
   scrollbar-width: thin;
-  scrollbar-color: var(--bg-hover) transparent;
+  scrollbar-color: #e2e8f0 transparent;
+  background: var(--bg-elevated);
 }
 
 .cart-list {
@@ -906,14 +966,29 @@ button {
   align-items: center;
   gap: 10px;
   padding: 11px 13px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  transition: border-color var(--transition);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-faint);
+  border-radius: 12px;
+  transition:
+    border-color var(--t-fast),
+    box-shadow var(--t-fast);
 }
 
 .cart-item:hover {
-  border-color: var(--gold-border);
+  border-color: #90b4f8;
+  box-shadow: 0 2px 12px rgba(21, 101, 192, 0.08);
+}
+
+.cart-item-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #e8f0fe;
+  border: 1px solid #ccd9f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .cart-item-info {
@@ -923,22 +998,22 @@ button {
 
 .cart-item-name {
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
+  letter-spacing: -0.01em;
 }
 
 .cart-item-rate {
   font-size: 11px;
   color: var(--text-muted);
-}
-
-.cart-item-tax {
-  color: var(--text-muted);
-  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
 }
 
 /* Qty controls */
@@ -946,34 +1021,19 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.qty-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  border: 1px solid var(--border-mid);
-  background: var(--bg-base);
-  color: var(--text-primary);
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  transition: all var(--transition);
-}
-
-.qty-btn:hover {
-  border-color: var(--gold);
-  color: var(--gold);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 3px 6px;
 }
 
 .qty-value {
   font-size: 13px;
-  font-weight: 600;
-  min-width: 18px;
+  font-weight: 700;
+  min-width: 22px;
   text-align: center;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 /* Item total + remove */
@@ -981,122 +1041,103 @@ button {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 3px;
 }
 
 .cart-item-amount {
   font-size: 13px;
-  font-weight: 600;
-  color: var(--gold);
+  font-weight: 700;
+  color: #1565c0;
+  letter-spacing: -0.02em;
 }
 
-.remove-btn {
-  font-size: 10px;
-  color: var(--text-muted);
-  transition: color var(--transition);
-  padding: 0;
-}
-
-.remove-btn:hover {
-  color: var(--red);
-}
-
-/* Item enter/leave animation */
+/* Item animations */
 .item-anim-enter-active,
 .item-anim-leave-active {
-  transition: all 0.2s ease;
+  transition: all 0.22s var(--ease-out);
 }
 
 .item-anim-enter-from {
   opacity: 0;
-  transform: translateX(14px);
+  transform: translateX(14px) scale(0.97);
 }
 
 .item-anim-leave-to {
   opacity: 0;
-  transform: translateX(-14px);
+  transform: translateX(-14px) scale(0.97);
 }
 
 /* Bill summary */
 .bill-summary {
-  padding: 14px 18px;
-  border-top: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
+  padding: 14px 16px 10px;
+  border-top: 1px solid var(--border-faint);
   flex-shrink: 0;
 }
 
 .bill-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.bill-row:last-child {
+  margin-bottom: 0;
+}
+
+.bill-label {
   font-size: 13px;
   color: var(--text-secondary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
 }
 
-.bill-row.tax-row {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.bill-divider {
-  height: 1px;
-  background: var(--border-subtle);
-}
-
-.bill-row.total-row {
-  font-size: 15px;
+.bill-value {
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-/* Checkout button */
-.checkout-btn {
-  margin: 0 14px 16px;
-  padding: 14px;
-  border-radius: var(--radius-md);
-  border: none;
-  background: linear-gradient(135deg, #c9a84c 0%, #e8c96a 50%, #c9a84c 100%);
-  background-size: 200% 200%;
-  color: #0d0f14;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--font-sans);
-  letter-spacing: 0.02em;
-  animation: shimmer 3s ease infinite;
-  transition: transform var(--transition), box-shadow var(--transition);
+.total-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.total-value {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+/* Cart footer / Checkout button */
+.cart-footer {
+  padding: 12px 16px 16px;
   flex-shrink: 0;
+  border-top: 1px solid var(--border-faint);
+  background: var(--bg-surface);
 }
 
-.checkout-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(201, 168, 76, 0.26);
-}
-
-.checkout-btn:active {
-  transform: translateY(0);
-}
-
-@keyframes shimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50%       { background-position: 100% 50%; }
+.checkout-btn {
+  font-family: var(--font-sans) !important;
+  font-weight: 700 !important;
+  font-size: 13.5px !important;
+  letter-spacing: 0.01em !important;
 }
 
 /* ════════════════════════════════════════
    VARIANT DIALOG
 ════════════════════════════════════════ */
 .dialog-card {
-  background: var(--bg-surface);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--gold-border);
   overflow: hidden;
   font-family: var(--font-sans);
 }
 
-/* Hero image section */
+/* Hero */
 .dialog-hero {
   position: relative;
-  height: 185px;
+  height: 180px;
   overflow: hidden;
 }
 
@@ -1105,6 +1146,11 @@ button {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.5s var(--ease-out);
+}
+
+.dialog-card:hover .dialog-hero-img {
+  transform: scale(1.04);
 }
 
 .dialog-hero-gradient {
@@ -1112,169 +1158,78 @@ button {
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.28) 0%,
-    transparent 40%,
-    rgba(13, 15, 20, 0.88) 100%
+    transparent 30%,
+    rgba(10, 20, 50, 0.75) 100%
   );
 }
 
-.dialog-product-name {
+.dialog-hero-content {
   position: absolute;
   bottom: 14px;
   left: 18px;
   right: 52px;
-  font-family: var(--font-display);
+}
+
+.dialog-product-name {
   font-size: 21px;
-  font-weight: 600;
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
-  line-height: 1.3;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.5);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
 }
 
-
-
+/* Close button */
 .dialog-close-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Glass + depth */
-  background: rgba(20, 22, 28, 0.55);
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
-
-  border: 1px solid rgba(255, 255, 255, 0.08);
-
-  /* Soft shadow for floating effect */
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 0 rgba(255, 255, 255, 0);
-
-  color: var(--text-primary);
-
-  cursor: pointer;
-
-  transition:
-    transform 0.2s ease,
-    background 0.25s ease,
-    box-shadow 0.25s ease,
-    border-color 0.25s ease;
-}
-
-/* Hover → subtle lift + glow */
-.dialog-close-btn:hover {
-  transform: translateY(-2px) scale(1.05);
-
-  background: linear-gradient(
-    135deg,
-    rgba(255, 80, 80, 0.9),
-    rgba(255, 40, 40, 0.9)
-  );
-
-  border-color: rgba(255, 80, 80, 0.8);
-
-  box-shadow:
-    0 8px 20px rgba(255, 60, 60, 0.35),
-    0 0 0 2px rgba(255, 60, 60, 0.15);
-}
-
-/* Click → pressed feel */
-.dialog-close-btn:active {
-  transform: scale(0.92);
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.4) inset;
-}
-
-/* Icon styling (if using <i> or svg inside) */
-.dialog-close-btn svg,
-.dialog-close-btn i {
-  font-size: 16px;
-  transition: transform 0.2s ease;
-}
-
-/* Icon rotates slightly on hover (premium touch) */
-.dialog-close-btn:hover svg,
-.dialog-close-btn:hover i {
-  transform: rotate(90deg);
-}
-
-/* Focus accessibility (important!) */
-.dialog-close-btn:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 3px rgba(255, 60, 60, 0.4);
-}
-
-/* Dialog body */
-.dialog-body {
-  padding: 18px 20px 20px;
-}
-
-.dialog-description {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: 16px;
-}
-
-.dialog-section-label {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-}
-
-.dialog-no-variants {
-  font-size: 13px;
-  color: var(--text-muted);
-  padding: 10px 0;
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  background: rgba(255,255,255,0.92) !important;
+  border: 1px solid rgba(0,0,0,0.08) !important;
+  backdrop-filter: blur(8px) !important;
 }
 
 /* Variant rows */
 .dialog-variants {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 7px;
+  margin-bottom: 4px;
   max-height: 240px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--bg-hover) transparent;
+  scrollbar-color: #e2e8f0 transparent;
 }
 
 .variant-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 13px 15px;
+  padding: 12px 15px;
   background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-faint);
+  border-radius: 12px;
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    border-color var(--t-fast),
+    background var(--t-fast),
+    box-shadow var(--t-fast);
 }
 
 .variant-row:hover:not(.variant-oos) {
-  border-color: var(--gold-border);
-  background: var(--bg-hover);
+  border-color: #90b4f8;
+  background: #f0f5ff;
+  box-shadow: 0 2px 10px rgba(21, 101, 192, 0.08);
 }
 
 .variant-row.variant-selected {
-  border-color: var(--gold);
-  background: var(--gold-dim);
+  border-color: #1565c0;
+  background: #e8f0fe;
+  box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.2), 0 2px 12px rgba(21, 101, 192, 0.12);
 }
 
 .variant-row.variant-oos {
-  opacity: 0.45;
+  opacity: 0.42;
   cursor: not-allowed;
 }
 
@@ -1285,55 +1240,28 @@ button {
 }
 
 .variant-name {
-  font-size: 13.5px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .variant-stock {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.variant-stock.stock-low {
-  color: var(--orange);
-}
-
-.variant-stock.stock-out {
-  color: var(--red);
+  font-size: 10.5px;
+  font-weight: 500;
+  margin-top: 2px;
 }
 
 .variant-right {
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
 .variant-price {
   font-size: 16px;
-  font-weight: 600;
-  color: var(--gold);
-}
-
-.variant-tax-badge {
-  font-size: 10px;
-  background: rgba(201, 168, 76, 0.12);
-  color: var(--gold);
-  border: 1px solid var(--gold-border);
-  padding: 2px 7px;
-  border-radius: 999px;
-}
-
-.variant-check {
-  width: 21px;
-  height: 21px;
-  border-radius: 50%;
-  background: var(--gold);
-  color: #0d0f14;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  font-weight: 700;
+  color: #1565c0;
+  letter-spacing: -0.03em;
 }
 
 /* Dialog footer */
@@ -1341,284 +1269,20 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-subtle);
+  gap: 16px;
 }
 
 .dialog-price-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   min-width: 0;
 }
 
-.price-label {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-}
-
-.price-value {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--gold);
-  line-height: 1.2;
-}
-
-.price-tax-note {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  color: var(--text-muted);
-  display: block;
-  margin-top: 1px;
-}
-
-/* Cancel and Add buttons side by side */
 .dialog-buttons {
   display: flex;
   align-items: center;
-  gap: 10px;
   flex-shrink: 0;
 }
 
-.btn-cancel {
-  padding: 11px 20px;
-  border-radius: var(--radius-md);
-
-  font-size: 13.5px;
-  font-weight: 500;
-  font-family: var(--font-sans);
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-
-  /* Base */
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text-secondary);
-
-  cursor: pointer;
-
-  /* Depth */
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.25),
-    inset 0 0 0 0 rgba(255, 255, 255, 0);
-
-  backdrop-filter: blur(6px);
-
-  transition:
-    transform 0.18s ease,
-    background 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease,
-    color 0.25s ease;
-}
-
-/* Hover → subtle lift + soft red intent */
-.btn-cancel:hover {
-  transform: translateY(-1px);
-
-  border-color: rgba(255, 90, 90, 0.6);
-  color: #ff6b6b;
-
-  background: linear-gradient(
-    135deg,
-    rgba(255, 90, 90, 0.08),
-    rgba(255, 60, 60, 0.12)
-  );
-
-  box-shadow:
-    0 6px 14px rgba(255, 60, 60, 0.15),
-    0 0 0 1px rgba(255, 60, 60, 0.1);
-}
-
-/* Active → pressed feel */
-.btn-cancel:active {
-  transform: scale(0.96);
-
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.3) inset;
-}
-
-/* Focus (keyboard accessibility) */
-.btn-cancel:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 3px rgba(255, 80, 80, 0.35);
-}
-
-/* Optional icon animation */
-.btn-cancel svg,
-.btn-cancel i {
-  font-size: 14px;
-  transition: transform 0.2s ease;
-}
-
-.btn-cancel:hover svg,
-.btn-cancel:hover i {
-  transform: translateX(2px);
-}
-
-/* Disabled state (important for UX) */
-.btn-cancel:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-.btn-add {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  padding: 12px 22px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-
-  background: linear-gradient(135deg, #d4af37, #c9a84c, #b8962e);
-  color: #111;
-
-  font-size: 13.5px;
-  font-weight: 600;
-  font-family: var(--font-sans);
-
-  cursor: pointer;
-  overflow: hidden;
-
-  transition: all 0.25s ease;
-}
-
-/* ✨ Soft glow layer */
-.btn-add::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-
-  background: linear-gradient(
-    120deg,
-    rgba(255,255,255,0.4) 0%,
-    transparent 40%,
-    transparent 60%,
-    rgba(255,255,255,0.4) 100%
-  );
-
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-/* 🌟 Shine animation */
-.btn-add::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -120%;
-  width: 100%;
-  height: 100%;
-
-  background: linear-gradient(
-    120deg,
-    transparent,
-    rgba(255,255,255,0.5),
-    transparent
-  );
-
-  transition: all 0.6s ease;
-}
-
-/* 🟡 Hover */
-.btn-add:hover:not(:disabled) {
-  transform: translateY(-2px) scale(1.02);
-
-  box-shadow:
-    0 10px 30px rgba(201, 168, 76, 0.35),
-    0 2px 6px rgba(0, 0, 0, 0.2);
-
-  background: linear-gradient(135deg, #e0bb4a, #d4af37, #c9a84c);
-}
-
-/* glow visible */
-.btn-add:hover::before {
-  opacity: 1;
-}
-
-/* shine sweep */
-.btn-add:hover::after {
-  left: 120%;
-}
-
-/* 🔘 Click press */
-.btn-add:active:not(:disabled) {
-  transform: scale(0.96);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-/* 🚫 Disabled */
-.btn-add:disabled {
-  background: linear-gradient(135deg, #2a2d35, #1f2229);
-  color: #777;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* ─── Mobile ─────────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .pos-root {
-    flex-direction: column;
-  }
-
-  .cart-panel {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    max-height: 50vh;
-    border-radius: 20px 20px 0 0;
-    border-top: 1px solid var(--gold-border);
-    border-left: none;
-    z-index: 100;
-  }
-
-  /* Override slide direction on mobile (comes up from bottom) */
-  .cart-slide-enter-from,
-  .cart-slide-leave-to {
-    transform: translateY(100%);
-    opacity: 1;
-  }
-
-  .products-panel {
-    border-right: none;
-  }
-
-  .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  }
-
-  .dialog-variants {
-    max-height: 180px;
-  }
-
-  .dialog-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .dialog-buttons {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .btn-cancel,
-  .btn-add {
-    flex: 1;
-    justify-content: center;
-  }
+.dialog-description {
+  line-height: 1.65;
 }
 </style>
