@@ -1,19 +1,19 @@
 <template>
   <div>
     <!-- Web Orders: Desktop / Large Screens -->
-   <Web-Orders
-  v-if="!device.isMobile"
-  :invoices="invoices"
-  :loading="loading"
-  :page="page"
-  :itemsPerPage="itemsPerPage"
-  :sortBy="sortBy"
-  :sortDesc="sortDesc"
-  @update="handleWebUpdate"
-  @rowClick="onRowClick"
-  @filterChanged="applyFilters"
-  @refreshInvoices="loadInvoices"
-/>
+    <Web-Orders
+    v-if="!device.isMobile"
+    :invoices="invoices"
+    :loading="loading"
+    :page="page"
+    :itemsPerPage="itemsPerPage"
+    :sortBy="sortBy"
+    :sortDesc="sortDesc"
+    @update="handleWebUpdate"
+    @rowClick="onRowClick"
+    @filterChanged="applyFilters"
+    @refreshInvoices="loadInvoices"
+  />
 
     <!-- Mobile Orders -->
     <Mobile-Orders
